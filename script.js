@@ -178,10 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const load = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } };
     const toTitleCase = (str) => { return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '); };
 
-    // --- PREFS LOADING ---
+    // --- PREFS LOADING & ULTIMATE SANITIZER ---
     let prefs = load(K_PREFS);
     if (!prefs || typeof prefs !== 'object') { 
-        prefs = { lightMode: false, zenMode: false, showBackground: true, sound: true, haptics: true, nightOwl: false, lifetimeTotal: 0, bestStreak: 0, skipCredits: 3, lastSkipResetMonth: "", vacationMode: false, lastActiveDate: Date.now(), sortMode: 'Manual' };
+        prefs = { lightMode: false, zenMode: false, showBackground: true, sound: true, haptics: true, nightOwl: false, lifetimeTotal: 0, bestStreak: 0, skipCredits: 3, lastSkipResetMonth: "", vacationMode: false, lastActiveDate: Date.now(), sortMode: 'Manual', customGuideName: "Echo" };
     } else {
         if (typeof prefs.lightMode === 'undefined') prefs.lightMode = false;
         if (typeof prefs.zenMode === 'undefined') prefs.zenMode = false;
@@ -192,6 +192,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof prefs.vacationMode === 'undefined') prefs.vacationMode = false;
         if (typeof prefs.lastActiveDate === 'undefined') prefs.lastActiveDate = Date.now();
         if (typeof prefs.sortMode === 'undefined') prefs.sortMode = 'Manual';
+        if (typeof prefs.customGuideName === 'undefined') prefs.customGuideName = "Echo";
+    }
+
+    // THE ULTIMATE SANITIZER: Catches the [object HTMLDivElement] glitch and erases it on load
+    let nameCheck = String(prefs.customGuideName);
+    if (!prefs.customGuideName || nameCheck.includes("undefined") || nameCheck.includes("null") || nameCheck.includes("object") || nameCheck.trim() === "") {
+        prefs.customGuideName = "Echo";
+        save(K_PREFS, prefs); 
     }
 
     // --- MONTHLY SKIP ALLOWANCE LOGIC ---
@@ -291,7 +299,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dailyProgress.date !== todayString) { dailyProgress = { date: todayString, count: 0 };
     save(K_TODAY, dailyProgress); phrases.forEach(p => p.count = 0); save(K_DB, phrases); }
     
-    // Split Expansion Focus states! Main stays closed by default, Manage can pop open.
     let expandedFocusesMain = {};
     let expandedFocusesManage = {};
 
@@ -306,12 +313,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     applyZenModeUI();
     applyBackgroundUI();
-    applySort(); // Take snapshot on load
+    applySort(); 
 
     // --- VACATION MODE ON LOAD LOGIC ---
     let nowTime = Date.now();
 
-    // Backfill any vacation days missed while app was closed
     if (prefs.vacationMode && prefs.lastActiveDate) {
         let lastD = new Date(prefs.lastActiveDate);
         lastD.setHours(0,0,0,0);
@@ -329,7 +335,6 @@ document.addEventListener('DOMContentLoaded', () => {
         save(K_HISTORY, historyMap);
     }
 
-    // Welcome Back Prompt (Inactive for > 24 hours while on vacation)
     if (prefs.vacationMode && prefs.lastActiveDate && (nowTime - prefs.lastActiveDate > 24 * 60 * 60 * 1000)) {
         setTimeout(async () => {
             const result = await showDialog('confirm', 'Welcome Back!', 'Ready to jump back in, or stay in Vacation Mode?', '', "I'M BACK", "STAY ON VACATION");
@@ -341,7 +346,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 500); 
     }
 
-    // Always update last active time and save
     prefs.lastActiveDate = nowTime;
     save(K_PREFS, prefs);
     applyVacationUI();
@@ -443,7 +447,6 @@ document.addEventListener('DOMContentLoaded', () => {
             save(K_PREFS, prefs);
             document.getElementById('skips-remaining-text').innerText = prefs.skipCredits;
             
-            // Keep history object intact while adding the skip flag
             if (!historyMap[yStr]) historyMap[yStr] = { c: 0, g: dailyGoal };
             if (typeof historyMap[yStr] === 'number') historyMap[yStr] = { c: historyMap[yStr], g: dailyGoal };
             
@@ -454,24 +457,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-window.toggleAllBreakdowns = function() {
-    const btnText = document.querySelector('#toggle-all-breakdown-btn span');
-    const btnIcon = document.getElementById('expand-all-icon');
-    const contents = document.querySelectorAll('.breakdown-content');
-    const isExpanding = btnText.innerText === 'EXPAND ALL';
+    window.toggleAllBreakdowns = function() {
+        const btnText = document.querySelector('#toggle-all-breakdown-btn span');
+        const btnIcon = document.getElementById('expand-all-icon');
+        const contents = document.querySelectorAll('.breakdown-content');
+        const isExpanding = btnText.innerText === 'EXPAND ALL';
 
-    contents.forEach(c => {
-        if (isExpanding) {
-            c.classList.add('show');
-        } else {
-            c.classList.remove('show');
-        }
-    });
+        contents.forEach(c => {
+            if (isExpanding) {
+                c.classList.add('show');
+            } else {
+                c.classList.remove('show');
+            }
+        });
 
-    // Toggle the button text and flip the icon for the next click
-    btnText.innerText = isExpanding ? 'COLLAPSE ALL' : 'EXPAND ALL';
-    btnIcon.innerHTML = isExpanding ? '<polyline points="18 15 12 9 6 15"></polyline>' : '<polyline points="6 9 12 15 18 9"></polyline>';
-};
+        btnText.innerText = isExpanding ? 'COLLAPSE ALL' : 'EXPAND ALL';
+        btnIcon.innerHTML = isExpanding ? '<polyline points="18 15 12 9 6 15"></polyline>' : '<polyline points="6 9 12 15 18 9"></polyline>';
+    };
 
     // --- EXPORT/IMPORT LOGIC ---
     window.openExport = function() {
@@ -561,7 +563,6 @@ window.toggleAllBreakdowns = function() {
             save(K_CATS, categories); save(K_CATS_META, catsMeta); save(K_SEL, selectedCats); save(K_MANUAL_ORDER, manualOrder);
             save(K_GOAL, dailyGoal); save(K_TODAY, dailyProgress); save(K_PREFS, prefs); save(K_HISTORY, historyMap);
             
-            // Re-apply prefs visually (WITH THE SAFETY WRAPPER!)
             if (document.getElementById('theme-toggle')) { 
                 document.getElementById('theme-toggle').checked = !!prefs.lightMode; 
             }
@@ -590,9 +591,7 @@ window.toggleAllBreakdowns = function() {
         document.getElementById('file-import-input').value = ""; 
     }
 
-   // THIS IS THE REAL SETTINGS OPENER!
     window.openSettings = () => {
-        // We added an 'if' statement so it won't crash if the old theme-toggle is gone!
         if (document.getElementById('theme-toggle')) { document.getElementById('theme-toggle').checked = !!prefs.lightMode; }
         document.getElementById('zen-toggle').checked = !!prefs.zenMode;
         document.getElementById('vacation-toggle').checked = !!prefs.vacationMode;
@@ -610,14 +609,13 @@ window.toggleAllBreakdowns = function() {
     window.closeManager = () => { 
         document.getElementById('manage-overlay').classList.remove('show'); 
         window.updateList(); 
-        document.getElementById('me-overlay').classList.add('show'); // Reopens Your Account
+        document.getElementById('me-overlay').classList.add('show');
     };
     window.openBreakdown = () => { renderBreakdown(); document.getElementById('breakdown-overlay').classList.add('show'); };
     window.closeBreakdown = () => { document.getElementById('breakdown-overlay').classList.remove('show'); };
     
     // --- GUIDE & THEME OVERLAY LOGIC ---
     window.openGuides = () => { 
-        // Paint the glowing border on the equipped guide
         document.querySelectorAll('.guide-card').forEach(c => c.classList.remove('active-selection'));
         const currentUrl = prefs.activeGuideUrl || '';
         document.querySelectorAll('.guide-card.unlocked').forEach(card => {
@@ -630,7 +628,6 @@ window.toggleAllBreakdowns = function() {
     window.closeGuides = () => { document.getElementById('guides-overlay').classList.remove('show'); document.getElementById('me-overlay').classList.add('show'); };
     
     window.openThemes = () => { 
-        // Paint the glowing border on the equipped theme
         document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active-selection'));
         const currentTheme = prefs.activeTheme || 'Astral';
         document.querySelectorAll('.theme-card.unlocked').forEach(card => {
@@ -639,66 +636,6 @@ window.toggleAllBreakdowns = function() {
         document.getElementById('themes-overlay').classList.add('show'); 
     };
     window.closeThemes = () => { document.getElementById('themes-overlay').classList.remove('show'); document.getElementById('me-overlay').classList.add('show'); };
-
-    // --- THE EQUIP SYSTEM ---
-    window.equipGuide = function(cardElement) {
-        let url;
-        if (!cardElement) return;
-        
-        // Safety check: is it a string URL or an HTML element?
-        if (typeof cardElement === 'string') {
-            url = cardElement;
-        } else {
-            const img = cardElement.querySelector('.collection-img');
-            if(img) url = img.src;
-        }
-        
-        if(!url) return;
-
-        if (!prefs.customGuideName) prefs.customGuideName = "Echo";
-
-        // Update Images
-        const mainImg = document.getElementById('companion-image-display');
-        const overlayImg = document.getElementById('overlay-companion-img');
-        if(mainImg) mainImg.src = url;
-        if(overlayImg) overlayImg.src = url;
-
-        // Save
-        prefs.activeGuideUrl = url;
-        save(K_PREFS, prefs);
-
-        // Move glowing border
-        document.querySelectorAll('.guide-card').forEach(c => c.classList.remove('active-selection'));
-        if (typeof cardElement !== 'string') {
-            cardElement.classList.add('active-selection');
-        } else {
-            document.querySelectorAll('.guide-card.unlocked').forEach(card => {
-                const img = card.querySelector('.collection-img');
-                if (img && img.src === url) card.classList.add('active-selection');
-            });
-        }
-    };
-
-    window.equipTheme = function(themeName, cardElement) {
-        // If the theme system is loaded from Code 2, use it
-        if (typeof applyThemeVariables === 'function') {
-            applyThemeVariables(themeName);
-        }
-
-        // Save
-        prefs.activeTheme = themeName;
-        save(K_PREFS, prefs);
-
-        // Move glowing border
-        document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active-selection'));
-        if(cardElement) {
-            cardElement.classList.add('active-selection');
-        } else {
-            document.querySelectorAll('.theme-card.unlocked').forEach(card => {
-                if (card.getAttribute('data-theme-name') === themeName) card.classList.add('active-selection');
-            });
-        }
-    };
 
     function renderBreakdown() {
         let currentD = getLogicalDate(); currentD.setHours(0,0,0,0);
@@ -753,7 +690,7 @@ window.toggleAllBreakdowns = function() {
         const scrollCont = document.getElementById('scroll-chart-container'); setTimeout(() => { scrollCont.scrollLeft = scrollCont.scrollWidth; }, 10);
     }
 
-function renderStats() {
+    function renderStats() {
         const total = prefs.lifetimeTotal || 0;
         const levelContainer = document.getElementById('level-container');
 
@@ -780,7 +717,6 @@ function renderStats() {
             let val = historyMap[dateStr]; 
             let isMet = false;
             
-            // Checks if goal is met OR if a Silver Shield was used OR if Vacation Mode was active
             if (val && typeof val === 'object') { isMet = (val.c >= val.g) || val.s === true || val.v === true;
             } 
             else if (typeof val === 'number') { isMet = val >= dailyGoal;
@@ -891,19 +827,18 @@ function renderStats() {
         } 
     }
     
-window.updateProgressUI = function() {
+    window.updateProgressUI = function() {
         const fill = document.getElementById('prog-fill'); 
         const text = document.getElementById('prog-text'); 
+        if(!fill || !text) return;
         let percentage = Math.min(100, (dailyProgress.count / dailyGoal) * 100);
         
         fill.style.width = percentage + '%';
         
         if (dailyProgress.count >= dailyGoal) { 
-            // This is what it says when you finish your goal
             text.innerHTML = `Goal Met: ${dailyProgress.count} / ${dailyGoal}`; 
             text.style.color = 'var(--correct-color)';
         } else { 
-            // CHANGE IS HERE: Now it says "Daily Goal" instead of "Progress"
             text.innerHTML = `Daily Goal: ${dailyProgress.count} / ${dailyGoal}`; 
             text.style.color = 'var(--text-main)';
         }
@@ -1074,7 +1009,6 @@ window.updateProgressUI = function() {
     window.updateManagerList = function() {
         const c = document.getElementById('manage-list'); const catMenu = document.getElementById('cat-dropdown-menu'); const catBtn = document.getElementById('cat-view-btn'); if(!c) return;
         
-        // Sync Dropdown visuals
         document.querySelectorAll('#sort-dropdown-menu .dropdown-item').forEach(el => el.classList.remove('active-sort'));
         let activeSortEl = document.getElementById('sort-opt-' + prefs.sortMode);
         if (activeSortEl) activeSortEl.classList.add('active-sort');
@@ -1159,53 +1093,17 @@ window.updateProgressUI = function() {
         updateManagerList(); window.updateList(); 
         showSnackbar('Phrase deleted', state);
     }
-    
-    window.resetAll = async function() { 
-        const confirmed = await showDialog('confirm', 'Reset All Data', 'Delete all data, focuses, and settings? This cannot be undone.', '', 'RESET');
-        if(confirmed) { 
-            categories = ["Confidence", "Money", "Health"];
-            let now = Date.now();
-            catsMeta = { "Confidence": now, "Money": now, "Health": now };
-            manualOrder = [...categories];
-            phrases = [
-                {id: uid(), text: "I AM CAPABLE", count: 0, lifetimeCount: 0, category: "Confidence"},
-                {id: uid(), text: "I AM DOING THE BEST I CAN", count: 0, lifetimeCount: 0, category: "Confidence"},
-                {id: uid(), text: "I BELIEVE IN MYSELF", count: 0, lifetimeCount: 0, category: "Confidence"},
-                {id: uid(), text: "WEALTH FLOWS TO ME EFFORTLESSLY", count: 0, lifetimeCount: 0, category: "Money"},
-                {id: uid(), text: "I AM WORTHY OF FINANCIAL ABUNDANCE", count: 0, lifetimeCount: 0, category: "Money"},
-                {id: uid(), text: "I AM GRATEFUL FOR ALL OF THE MONEY THAT COMES INTO MY LIFE", count: 0, lifetimeCount: 0, category: "Money"},
-                {id: uid(), text: "MY BODY IS VIBRANT AND HEALING", count: 0, lifetimeCount: 0, category: "Health"},
-                {id: uid(), text: "MY BODY HEALS ITSELF NATURALLY", count: 0, lifetimeCount: 0, category: "Health"},
-                {id: uid(), text: "I FEEL BETTER AND BETTER IN EVERY WAY WITH EVERY PASSING DAY", count: 0, lifetimeCount: 0, category: "Health"}
-            ];
-            selectedCats = ["Confidence", "Money", "Health"]; currentCatSelection = "Confidence"; deck = []; activeState = null; 
-            expandedFocusesMain = {}; expandedFocusesManage = {};
-            dailyProgress = { date: todayString, count: 0 }; historyMap = {};
-            prefs = { lightMode: false, zenMode: false, showBackground: true, sound: true, haptics: true, nightOwl: false, lifetimeTotal: 0, bestStreak: 0, skipCredits: 3, lastSkipResetMonth: new Date().getFullYear() + "-" + new Date().getMonth(), vacationMode: false, lastActiveDate: Date.now(), sortMode: 'Manual' };
-            save(K_CATS, categories); save(K_CATS_META, catsMeta); save(K_MANUAL_ORDER, manualOrder); save(K_DB, phrases); save(K_SEL, selectedCats); save(K_DECK, deck); save(K_STATE, activeState); save(K_TODAY, dailyProgress); save(K_HISTORY, historyMap); save(K_PREFS, prefs);
-            
-            document.getElementById('theme-toggle').checked = false; 
-            document.body.classList.remove('light-mode'); 
-            document.documentElement.classList.remove('light-mode');
-            updateThemeMetaColor(false);
-            
-            document.getElementById('zen-toggle').checked = false;
-            document.getElementById('vacation-toggle').checked = false;
-            document.getElementById('bg-toggle').checked = true;
-            document.getElementById('sound-toggle').checked = true; 
-            document.getElementById('haptics-toggle').checked = true; 
-            document.getElementById('nightowl-toggle').checked = false; 
-            
-            // Sync Reset Text Visually
-            document.getElementById('skips-remaining-text').innerText = 3;
 
-            applyZenModeUI(); applyBackgroundUI(); applyVacationUI();
-            
-            closeOverlays(); window.updateList();
-        } 
-    }
+    // --- RESET ALL DATA (THE ONLY COPY!) ---
+    window.resetAll = async function() {
+        const confirmed = await showDialog('confirm', 'Reset All Data', 'Are you sure you want to erase everything? This cannot be undone.', '', 'RESET');
+        if (confirmed) {
+            localStorage.clear(); 
+            window.location.reload(); 
+        }
+    };
 
-    // GAME LOOP LOGIC
+    // --- GAME LOOP LOGIC ---
     window.startSession = async function() {
         const activePhrases = phrases.filter(p => selectedCats.includes(p.category));
         if(activePhrases.length === 0) { await showDialog('confirm', 'No Affirmations', 'Please select at least one Focus that contains affirmations.', '', 'OK'); return; }
@@ -1248,7 +1146,6 @@ window.updateProgressUI = function() {
         
         if (deck.length === 0) {
             deck = activePhrases.map(p => p.id);
-            // Fisher-Yates Shuffle to guarantee random draw but allow sending skipped items to the bottom
             for (let i = deck.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -1360,7 +1257,6 @@ window.updateProgressUI = function() {
                 document.getElementById('game-progress-fill').classList.add('progress-dimmed'); 
                 document.body.classList.add('screen-goal-breathe'); 
                 
-                // Safely grabs the pet image if it exists on your home screen
                 const mainPetImg = document.getElementById('companion-image-display');
                 const overlayPetImg = document.getElementById('overlay-companion-img');
                 if (mainPetImg && overlayPetImg) {
@@ -1385,28 +1281,39 @@ window.updateProgressUI = function() {
         });
     }
 
-    // --- RESET ALL DATA LOGIC ---
-    window.resetAll = async function() {
-        const confirmed = await showDialog('confirm', 'Reset All Data', 'Are you sure you want to erase everything? This cannot be undone.', '', 'RESET');
-        if (confirmed) {
-            localStorage.clear(); // Wipes the database
-            window.location.reload(); // Instantly reloads the app fresh!
-        }
-    };
-
-    // --- GUIDE EQUIPMENT & STATUS LOGIC ---
+    // --- GUIDE EQUIPMENT & STATUS LOGIC (THE ONLY COPY!) ---
     window.equipGuide = function(cardElement) {
-        if (!cardElement || cardElement.classList.contains('locked')) return;
-
-        const img = cardElement.querySelector('.collection-img');
-        if (!img) return;
-
-        prefs.activeGuideUrl = img.src;
-        save(K_PREFS, prefs);
+        let url;
+        if (!cardElement) return;
         
-        const mainImg = document.getElementById('companion-image-display');
-        if (mainImg) mainImg.src = prefs.activeGuideUrl;
+        if (typeof cardElement === 'string') {
+            url = cardElement;
+        } else {
+            const img = cardElement.querySelector('.collection-img');
+            if(img) url = img.src;
+        }
+        
+        if(!url) return;
 
+        if (!prefs.customGuideName) prefs.customGuideName = "Echo";
+
+        const mainImg = document.getElementById('companion-image-display');
+        const overlayImg = document.getElementById('overlay-companion-img');
+        if(mainImg) mainImg.src = url;
+        if(overlayImg) overlayImg.src = url;
+
+        prefs.activeGuideUrl = url;
+        save(K_PREFS, prefs);
+
+        document.querySelectorAll('.guide-card').forEach(c => c.classList.remove('active-selection'));
+        if (typeof cardElement !== 'string') {
+            cardElement.classList.add('active-selection');
+        } else {
+            document.querySelectorAll('.guide-card.unlocked').forEach(card => {
+                const img = card.querySelector('.collection-img');
+                if (img && img.src === url) card.classList.add('active-selection');
+            });
+        }
         window.updateGuideLabels();
     };
 
@@ -1429,7 +1336,24 @@ window.updateProgressUI = function() {
         });
     };
 
-    // --- EDIT GUIDE NAME LOGIC ---
+    window.equipTheme = function(themeName, cardElement) {
+        if (typeof applyThemeVariables === 'function') {
+            applyThemeVariables(themeName);
+        }
+
+        prefs.activeTheme = themeName;
+        save(K_PREFS, prefs);
+
+        document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active-selection'));
+        if(cardElement) {
+            cardElement.classList.add('active-selection');
+        } else {
+            document.querySelectorAll('.theme-card.unlocked').forEach(card => {
+                if (card.getAttribute('data-theme-name') === themeName) card.classList.add('active-selection');
+            });
+        }
+    };
+
     window.editGuideName = async function() {
         const currentName = prefs.customGuideName || "Echo";
         const newName = await showDialog('prompt', 'Name Your Companion', 'What should we call your guide? (Max 14 chars)', currentName, 'SAVE');
@@ -1454,13 +1378,6 @@ window.updateProgressUI = function() {
     const mainName = document.getElementById('companion-name-display'); 
     const menuNameBtn = document.getElementById('guides-menu-name-btn'); 
     
-    // THE ULTIMATE SANITIZER (Now catches HTML objects too!)
-    let savedNameStr = String(prefs.customGuideName);
-    if (!prefs.customGuideName || savedNameStr.includes("undefined") || savedNameStr.includes("null") || savedNameStr.includes("object") || savedNameStr.trim() === "") {
-        prefs.customGuideName = "Echo";
-        save(K_PREFS, prefs); 
-    }
-
     if (prefs.activeGuideUrl) {
         if(mainImg) mainImg.src = prefs.activeGuideUrl;
     } else {
@@ -1470,17 +1387,14 @@ window.updateProgressUI = function() {
         }
     }
     
-    // Force the names to paint on the screen!
     if(mainName) mainName.innerText = "Guide: " + prefs.customGuideName;
     if(menuNameBtn) {
         menuNameBtn.innerHTML = `${prefs.customGuideName} <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
     }
 
     window.updateGuideLabels();
-    window.updateList();
-});
 
-    // --- AUTO-PAINT THEME CARDS (RESTORED!) ---
+    // --- AUTO-PAINT THEME CARDS ---
     if (typeof APP_THEMES !== 'undefined') {
         document.querySelectorAll('.theme-card').forEach(card => {
             const themeName = card.getAttribute('data-theme-name');
@@ -1489,13 +1403,11 @@ window.updateProgressUI = function() {
                 const previewDiv = card.querySelector('.theme-preview');
                 
                 if (previewDiv && !previewDiv.classList.contains('blurred')) {
-                    // Paint background image
                     previewDiv.style.backgroundImage = themeData["--bg-image"];
                     previewDiv.style.backgroundSize = "cover";
                     previewDiv.style.backgroundPosition = "center";
                     previewDiv.style.borderRadius = "8px";
 
-                    // Inject the 3 color swatches
                     previewDiv.innerHTML = `
                         <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; background: rgba(0,0,0,0.5); padding: 4px 6px; border-radius: 12px; backdrop-filter: blur(4px);">
                             <div style="width: 12px; height: 12px; border-radius: 50%; background: ${themeData["--bg-base"]}; border: 1px solid rgba(255,255,255,0.3);"></div>
@@ -1517,17 +1429,13 @@ window.updateProgressUI = function() {
         document.querySelectorAll('.unlockable-item').forEach(item => {
             const reqLevel = parseInt(item.getAttribute('data-unlock-level'));
             
-            // If the user's level is high enough to unlock this item...
             if (currentLevel >= reqLevel) {
-                // 1. Swap classes to make it clickable
                 item.classList.remove('locked');
                 item.classList.add('unlocked');
                 
-                // 2. Hide the Frosted Glass padlock box
                 const lockGlass = item.querySelector('.locked-glass');
                 if (lockGlass) lockGlass.style.display = 'none';
                 
-                // 3. Remove silhouette from guides and blur from themes
                 const img = item.querySelector('.collection-img');
                 if (img) img.classList.remove('silhouette');
                 
@@ -1536,22 +1444,20 @@ window.updateProgressUI = function() {
             }
         });
         
-        // Refresh the labels so newly unlocked guides say "Select" instead of "Locked"
         if (typeof window.updateGuideLabels === 'function') window.updateGuideLabels();
     };
 
-    window.checkUnlocks(); // Run this logic immediately on startup!
-
+    window.checkUnlocks(); 
     window.updateList();
-}); // <-- This is the ONE and ONLY closing bracket now!
 
-// Closes the goal overlay cleanly
+}); // <-- The ONLY DOMContentLoaded closing bracket
+
+// --- GLOBAL WINDOW FUNCTIONS ---
 window.closeGoalOverlay = function() {
     document.getElementById('goal-overlay').classList.remove('show');
     document.body.classList.remove('screen-goal-breathe');
 };
 
-// Routes the user home if they click "Rest For Now"
 window.goHome = function() {
     stopSession();
 };
