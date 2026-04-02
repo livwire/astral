@@ -163,16 +163,29 @@
         </div>
     </div>
 
-    <div id="level-overlay" class="glass-overlay">
-        <div class="goal-card-new" style="padding: 30px 20px;">
-            <div style="font-size: 14px; color: var(--text-muted); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 10px; font-weight: bold;">New Level Reached</div>
-            <div class="level-overlay-title" id="level-overlay-title" style="font-size: 24px; font-weight: bold; color: var(--correct-color); margin-bottom: 15px;">LEVEL 2</div>
+    <div id="level-up-overlay">
+        <div class="ambient-stars">
+            <div class="ambient-star" style="left: 10%; width: 4px; height: 4px; animation-duration: 12s; animation-delay: 0s;"></div>
+            <div class="ambient-star" style="left: 30%; width: 6px; height: 6px; animation-duration: 15s; animation-delay: 2s;"></div>
+            <div class="ambient-star" style="left: 60%; width: 3px; height: 3px; animation-duration: 10s; animation-delay: 1s;"></div>
+            <div class="ambient-star" style="left: 80%; width: 5px; height: 5px; animation-duration: 18s; animation-delay: 3s;"></div>
+            <div class="ambient-star" style="left: 50%; width: 7px; height: 7px; animation-duration: 14s; animation-delay: 5s;"></div>
+            <div class="ambient-star" style="left: 20%; width: 5px; height: 5px; animation-duration: 16s; animation-delay: 7s;"></div>
+            <div class="ambient-star" style="left: 70%; width: 4px; height: 4px; animation-duration: 11s; animation-delay: 4s;"></div>
+            <div class="ambient-star" style="left: 90%; width: 6px; height: 6px; animation-duration: 13s; animation-delay: 8s;"></div>
+        </div>
+        
+        <div class="goal-card-new level-up-modal">
+            <h2 class="goal-title">LEVEL UP</h2>
             
-            <div id="level-subtitle" style="font-size: 14px; color: var(--text-main); margin-bottom: 15px; opacity: 0.8; font-style: italic;">Your cosmic energy expands.</div>
+            <div class="reward-container">
+                <div id="reward-visual"></div> 
+            </div>
             
-            <div id="level-reward-text" style="font-size: 13px; color: var(--correct-color); margin-bottom: 30px; letter-spacing: 2px; text-transform: uppercase; font-weight: bold; min-height: 20px;"></div>
+            <p id="level-up-desc" class="goal-subtitle" style="text-transform: uppercase; letter-spacing: 2px; font-size: 11px; color: var(--correct-color); font-weight: bold; margin-bottom: 5px;"></p>
+            <h3 id="reward-name" style="font-size: 22px; font-weight: 300; margin-top: 0; margin-bottom: 25px; color: var(--text-main);"></h3>
             
-            <div class="goal-overlay-btns" id="level-btns"></div>
+            <div id="level-btns-container" class="goal-button-container"></div>
         </div>
     </div>
 
@@ -458,10 +471,10 @@
                 <div class="collection-name">Cloud</div>
             </div>
             
-            <div class="collection-card locked unlockable-item theme-card" data-theme-name="Nebula" data-unlock-level="10">
+            <div class="collection-card locked unlockable-item theme-card" data-theme-name="Crystalline Cave" data-unlock-level="10">
                 <div class="locked-glass"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><div class="unlock-req">Level 10</div></div>
                 <div class="theme-preview blurred" style="padding: 5px; position: relative;"></div>
-                <div class="collection-name">Nebula</div>
+                <div class="collection-name">Crystalline Cave</div>
             </div>
         </div>
     </div>
