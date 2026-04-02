@@ -16,6 +16,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const GRID_COLS = 5;
     const GRID_SIZE = 15; 
 
+    // --- THE MASTER REWARD DICTIONARY ---
+    const LEVEL_REWARDS = {
+        5:  { 
+            type: "GUIDE", 
+            name: "CUMULUS",
+            visual: `<img src="images/cumulus.png" class="reward-image-preview">`,
+            actionHtml: `<button class="btn-ghost" onclick="stopSession(); openGuides(); document.getElementById('level-up-overlay').classList.remove('active');">VIEW REWARD</button>`
+        },
+        10: { 
+            type: "THEME", 
+            name: "CRYSTALLINE CAVE",
+            visual: `<img src="images/gem-cave.png" class="reward-image-preview">`, 
+            actionHtml: `<button class="btn-ghost" onclick="stopSession(); openThemes(); document.getElementById('level-up-overlay').classList.remove('active');">VIEW REWARD</button>`
+        },
+        15: { 
+            type: "SHAPE", 
+            name: "HEXAGON BUBBLES",
+            visual: `<div class="reward-emoji-preview">⬡</div>`,
+            actionHtml: `<button class="btn-ghost" onclick="closeLevelUp()">VIEW REWARD</button>`
+        },
+        20: { 
+            type: "RARE ITEM", 
+            name: "CHRONO-SHIELD",
+            visual: `<div class="reward-emoji-preview">🛡️</div>`,
+            actionHtml: `<button class="btn-ghost" onclick="closeLevelUp()">VIEW REWARD</button>`
+        }
+    };
+
     let currentChartView = 'Day';
     let currentCatSelection = null;
     let lastMovedCat = null;
@@ -195,14 +223,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof prefs.customGuideName === 'undefined') prefs.customGuideName = "Echo";
     }
 
-    // THE ULTIMATE SANITIZER: Catches the [object HTMLDivElement] glitch and erases it on load
     let nameCheck = String(prefs.customGuideName);
     if (!prefs.customGuideName || nameCheck.includes("undefined") || nameCheck.includes("null") || nameCheck.includes("object") || nameCheck.trim() === "") {
         prefs.customGuideName = "Echo";
         save(K_PREFS, prefs); 
     }
 
-    // --- MONTHLY SKIP ALLOWANCE LOGIC ---
     let currentMonthKey = new Date().getFullYear() + "-" + new Date().getMonth();
     if (prefs.lastSkipResetMonth !== currentMonthKey) {
         prefs.skipCredits = 3;
@@ -231,7 +257,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (metaUpdated) save(K_CATS_META, catsMeta);
 
-    // --- MANUAL SORT ORDER LOADING ---
     let manualOrder = load(K_MANUAL_ORDER);
     if (!Array.isArray(manualOrder) || manualOrder.length !== categories.length) {
         let newOrder = Array.isArray(manualOrder) ? manualOrder.filter(c => categories.includes(c)) : [];
@@ -287,7 +312,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- SELECTED CATS LOADING ---
     let selectedCats = load(K_SEL);
     if (!Array.isArray(selectedCats)) {
         selectedCats = [...categories]; 
@@ -304,7 +328,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let deck = load(K_DECK) || []; let activeState = load(K_STATE) || null; let audioCtx = null;
     
-    // Initial Setup
     if(prefs.lightMode) { document.body.classList.add('light-mode'); document.documentElement.classList.add('light-mode'); updateThemeMetaColor(true);
     } else { document.documentElement.classList.remove('light-mode'); updateThemeMetaColor(false); }
     
@@ -315,7 +338,6 @@ document.addEventListener('DOMContentLoaded', () => {
     applyBackgroundUI();
     applySort(); 
 
-    // --- VACATION MODE ON LOAD LOGIC ---
     let nowTime = Date.now();
 
     if (prefs.vacationMode && prefs.lastActiveDate) {
@@ -415,7 +437,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.updateProgressUI(); window.updateList();
     }
 
-    // --- APPLY SKIP SHIELD LOGIC ---
     window.applySkip = async function() {
         if (prefs.skipCredits <= 0) {
             await showDialog('confirm', 'Out of Shields', 'You have used your 3 shields for this month. They will reset on the 1st!', '', 'OK');
@@ -475,7 +496,6 @@ document.addEventListener('DOMContentLoaded', () => {
         btnIcon.innerHTML = isExpanding ? '<polyline points="18 15 12 9 6 15"></polyline>' : '<polyline points="6 9 12 15 18 9"></polyline>';
     };
 
-    // --- EXPORT/IMPORT LOGIC ---
     window.openExport = function() {
         document.getElementById('data-title').innerText = "Export Data";
         document.getElementById('data-desc').innerText = "Copy this code or save it as a file to back up your progress.";
@@ -614,7 +634,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.openBreakdown = () => { renderBreakdown(); document.getElementById('breakdown-overlay').classList.add('show'); };
     window.closeBreakdown = () => { document.getElementById('breakdown-overlay').classList.remove('show'); };
     
-    // --- GUIDE & THEME OVERLAY LOGIC ---
     window.openGuides = () => { 
         document.querySelectorAll('.guide-card').forEach(c => c.classList.remove('active-selection'));
         const currentUrl = prefs.activeGuideUrl || '';
@@ -1120,12 +1139,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    window.stopSession = function() { document.getElementById('lib').style.display = 'flex'; document.getElementById('game').style.display = 'none'; document.body.classList.remove('screen-goal-breathe'); document.body.classList.remove('world-expand'); document.body.classList.remove('game-active'); document.getElementById('goal-overlay').classList.remove('show'); document.getElementById('level-overlay').classList.remove('show'); window.updateList(); }
+    window.stopSession = function() { document.getElementById('lib').style.display = 'flex'; document.getElementById('game').style.display = 'none'; document.body.classList.remove('screen-goal-breathe'); document.body.classList.remove('game-active'); document.getElementById('goal-overlay').classList.remove('show'); document.getElementById('level-up-overlay').classList.remove('active'); window.updateList(); }
+
+    window.continueGame = function() { document.getElementById('goal-overlay').classList.remove('show'); document.body.classList.remove('screen-goal-breathe'); nextRound(); }
     
-    window.continueGame = function() { document.getElementById('goal-overlay').classList.remove('show'); document.body.classList.remove('screen-goal-breathe'); document.body.classList.remove('world-expand'); nextRound(); }
-    
-    window.continueFromLevel = function() { document.getElementById('level-overlay').classList.remove('show'); document.body.classList.remove('screen-goal-breathe'); document.body.classList.remove('world-expand'); nextRound(); }
-    
+    window.closeLevelUp = function() { document.getElementById('level-up-overlay').classList.remove('active'); document.body.classList.remove('screen-goal-breathe'); nextRound(); }
+
     window.finishGame = function() { stopSession(); }
 
     window.skipCurrentPhrase = function() {
@@ -1220,36 +1239,58 @@ document.addEventListener('DOMContentLoaded', () => {
             activeState = null; save(K_STATE, null); save(K_DB, phrases);
             const txtOut = document.getElementById('text-out'); txtOut.classList.add('text-win-cyan'); txtOut.innerHTML = p;
             
+            // --- THE NEW CLEAN LEVEL-UP LOGIC ---
             if (justLeveledUp && !prefs.zenMode) {
                 soundRankUp();
-                vibrateDevice('rank'); 
-                document.getElementById('game-progress-fill').classList.add('progress-dimmed'); 
-                document.body.classList.add('screen-goal-breathe'); 
-                document.body.classList.add('world-expand'); 
+                vibrateDevice('rank');
+                document.getElementById('game-progress-fill').classList.add('progress-dimmed');
                 
-                document.getElementById('level-overlay-title').innerText = "LEVEL " + newLevelInfo.level;
-                
-                const rewardText = document.getElementById('level-reward-text');
-                const btnContainer = document.getElementById('level-btns');
-                const subtitle = document.getElementById('level-subtitle');
+                const descEl = document.getElementById('level-up-desc');
+                const nameEl = document.getElementById('reward-name');
+                const visualEl = document.getElementById('reward-visual');
+                const btnContainer = document.getElementById('level-btns-container');
 
-                if (newLevelInfo.level === 5) {
-                    subtitle.innerText = "A new presence joins your orbit.";
-                    rewardText.innerText = "✦ NEW GUIDE UNLOCKED: AURA ✦";
-                    btnContainer.innerHTML = `<button class="btn-ghost" onclick="stopSession(); openGuides();">VIEW NEW GUIDE</button><button class="btn-ghost" style="border-color: transparent; background: transparent; box-shadow: none;" onclick="continueFromLevel()">CONTINUE</button>`;
-                } else if (newLevelInfo.level === 10) {
-                    subtitle.innerText = "The colors of the cosmos shift around you.";
-                    rewardText.innerText = "✦ NEW THEME UNLOCKED: NEBULA ✦";
-                    btnContainer.innerHTML = `<button class="btn-ghost" onclick="stopSession(); openThemes();">VIEW NEW THEME</button><button class="btn-ghost" style="border-color: transparent; background: transparent; box-shadow: none;" onclick="continueFromLevel()">CONTINUE</button>`;
+                // The pure CSS glowing orb
+                const orbHTML = `
+                    <div class="celestial-orb-wrapper">
+                        <div class="orbit-ring orbit-ring-2"></div>
+                        <div class="orbit-ring"></div>
+                        <div class="celestial-orb"></div>
+                    </div>
+                `;
+
+                // Look up the current level in our Master Dictionary
+                const reward = LEVEL_REWARDS[newLevelInfo.level];
+
+                if (reward) {
+                    // Specific Reward (Guide/Theme)
+                    descEl.innerText = `✦ NEW ${reward.type} ✦`;
+                    visualEl.innerHTML = reward.visual;
+                    nameEl.innerText = reward.name;
+                    
+                    btnContainer.innerHTML = `
+                        ${reward.actionHtml}
+                        <button class="btn-main" onclick="closeLevelUp()">CONTINUE JOURNEY</button>
+                    `;
+                } else if (newLevelInfo.level % 5 === 0) {
+                    // Mystery Milestone
+                    descEl.innerText = `✦ MYSTERY REWARD ✦`;
+                    visualEl.innerHTML = orbHTML;
+                    nameEl.innerText = "UNKNOWN ITEM";
+                    btnContainer.innerHTML = `<button class="btn-main" onclick="closeLevelUp()">CONTINUE JOURNEY</button>`;
                 } else {
-                    subtitle.innerText = "Your cosmic energy expands and your inner light grows brighter.";
-                    rewardText.innerText = "";
-                    btnContainer.innerHTML = `<button class="btn-ghost" onclick="continueFromLevel()">CONTINUE JOURNEY</button>`;
+                    // Regular Level
+                    descEl.innerText = "Your cosmic energy expands.";
+                    nameEl.innerText = `You've reached Level ${newLevelInfo.level}`;
+                    visualEl.innerHTML = orbHTML; 
+                    btnContainer.innerHTML = `<button class="btn-main" onclick="closeLevelUp()">CONTINUE JOURNEY</button>`;
                 }
                 
+                // Triggers EXISTING code that actually unlocks the Themes/Guides
                 if (typeof window.checkUnlocks === 'function') window.checkUnlocks();
 
-                setTimeout(() => { document.getElementById('level-overlay').classList.add('show'); }, 800);
+                // Trigger the Glowing Modal and Particles
+                setTimeout(() => { document.getElementById('level-up-overlay').classList.add('active'); }, 800);
             }
             else if (justHitGoal && !prefs.zenMode) { 
                 soundGoalReached();
@@ -1281,7 +1322,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- GUIDE EQUIPMENT & STATUS LOGIC (THE ONLY COPY!) ---
+    // --- GUIDE EQUIPMENT & STATUS LOGIC ---
     window.equipGuide = function(cardElement) {
         let url;
         if (!cardElement) return;
