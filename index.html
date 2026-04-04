@@ -97,10 +97,10 @@
         </div>
     </div>
     
-    <div style="height: 60px;"></div>
+    <div style="height: 45px;"></div>
     
     <div id="main-scroll-area">
-        <div id="vacation-banner" onclick="openSettings()" style="cursor: pointer; user-select: none;">
+        <div id="vacation-banner" onclick="document.getElementById('me-overlay').classList.add('show')" style="cursor: pointer; user-select: none;">
             Vacation Mode is ON—Streaks are paused.
         </div>
 
@@ -121,8 +121,9 @@
             
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; margin-top: 10px;">
+       <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 15px; margin-top: 10px;">
             <div style="font-size: 16px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; color: var(--text-main);">My Affirmations</div>
+            <div style="font-size: 13px; color: var(--text-muted);">Select what you want to focus on</div>
         </div>
         
         <div class="list-controls">
@@ -163,7 +164,7 @@
         </div>
     </div>
 
-    <div id="level-up-overlay">
+    <div id="level-up-overlay" class="glass-overlay">
         <div class="ambient-stars">
             <div class="ambient-star" style="left: 10%; width: 4px; height: 4px; animation-duration: 12s; animation-delay: 0s;"></div>
             <div class="ambient-star" style="left: 30%; width: 6px; height: 6px; animation-duration: 15s; animation-delay: 2s;"></div>
@@ -175,15 +176,17 @@
             <div class="ambient-star" style="left: 90%; width: 6px; height: 6px; animation-duration: 13s; animation-delay: 8s;"></div>
         </div>
         
-        <div class="goal-card-new level-up-modal">
+        <div class="goal-card-new" style="text-align: center;">
             <h2 class="goal-title">LEVEL UP</h2>
             
-            <div class="reward-container">
+            <p id="level-up-number" class="goal-subtitle" style="margin-bottom: 25px;"></p>
+            
+            <div class="reward-container" style="margin-bottom: 20px; display: flex; justify-content: center;">
                 <div id="reward-visual"></div> 
             </div>
             
-            <p id="level-up-desc" class="goal-subtitle" style="text-transform: uppercase; letter-spacing: 2px; font-size: 11px; color: var(--correct-color); font-weight: bold; margin-bottom: 5px;"></p>
-            <h3 id="reward-name" style="font-size: 22px; font-weight: 300; margin-top: 0; margin-bottom: 25px; color: var(--text-main);"></h3>
+            <p id="level-up-desc" class="goal-subtitle" style="text-transform: uppercase; letter-spacing: 2px; font-weight: bold; margin-bottom: 8px; margin-top: 0;"></p>
+            <h3 id="reward-name" class="goal-prompt" style="font-size: 22px; font-weight: 300; margin-top: 0; margin-bottom: 25px;"></h3>
             
             <div id="level-btns-container" class="goal-button-container"></div>
         </div>
@@ -275,33 +278,36 @@
     <div class="overlay-card" id="manage-card">
         
         <div style="text-align: center; margin-bottom: 15px;">
-            <div class="overlay-title" style="margin-bottom: 0;">Manage Focuses</div>
+            <div class="overlay-title" style="margin-bottom: 0;">Manage Affirmations</div>
         </div>
         
         <div class="studio-widget">
-            <div class="studio-subhead">New Focus</div>
+            <div class="studio-subhead">Create New Category</div>
             <div class="input-group" style="margin-bottom: 20px;">
-                <input type="text" id="new-focus-in" placeholder="Focus name..." style="padding: 10px; font-size: 14px;">
+                <input type="text" id="new-focus-in" placeholder="e.g., Confidence, Wealth..." style="padding: 10px; font-size: 14px;">
                 <button class="btn-main" style="padding: 10px 15px;" onclick="addFocus()">ADD</button>
             </div>
 
-            <div class="studio-subhead" style="border-top: 1px solid var(--border-glass); padding-top: 15px;">Add Affirmations</div>
+            <div class="studio-subhead" style="border-top: 1px solid var(--border-glass); padding-top: 15px;">Add Affirmation to Existing Category</div>
             <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
                 <span style="font-size: 12px; color: var(--text-muted); font-weight: bold;">To:</span>
                 <div class="custom-dropdown" id="cat-dropdown" style="flex: 1; min-width: 0;">
-                    <div class="cat-select-btn" id="cat-view-btn" onclick="toggleCatDropdown(event)" style="padding: 10px; font-size: 13px;">Select Focus</div>
+                    <div class="cat-select-btn" id="cat-view-btn" onclick="toggleCatDropdown(event)" style="padding: 10px; font-size: 13px;">Select Category</div>
                     <div class="dropdown-menu" id="cat-dropdown-menu" style="width: 100%; top: calc(100% + 5px);"></div>
                 </div>
             </div>
 
             <div class="input-group" id="single-add-group" style="margin-bottom: 10px;">
-                <input type="text" id="add-in" placeholder="Input affirmation..." style="padding: 10px; font-size: 14px;">
+                <input type="text" id="add-in" placeholder="Type affirmation here..." style="padding: 10px; font-size: 14px;">
                 <button class="btn-main" style="padding: 10px 15px;" onclick="addPhrase()">ADD</button>
             </div>
 
-            <div style="font-size: 10px; font-weight: bold; color: var(--text-muted); margin: 15px 0 10px 0; text-transform: uppercase; letter-spacing: 1px; text-align: center; opacity: 0.8;">Or Bulk Upload</div>
+            <div id="bulk-toggle-btn" style="font-size: 11px; font-weight: bold; color: var(--correct-color); margin: 15px 0 5px 0; text-transform: uppercase; letter-spacing: 1px; text-align: center; cursor: pointer; padding: 5px; opacity: 0.8; transition: opacity 0.2s;" onclick="document.getElementById('bulk-area').style.display='flex'; this.style.display='none';">
+                + Show Bulk Import
+            </div>
             
-            <div id="bulk-area" style="display: flex; flex-direction: column; gap: 8px;">
+            <div id="bulk-area" style="display: none; flex-direction: column; gap: 8px; margin-top: 15px;">
+                <div class="studio-subhead" style="margin-bottom: 0;">Bulk Upload Affirmations</div>
                 <textarea id="bulk-in" placeholder="Paste affirmations here...&#10;One per line." style="height: 80px; padding: 10px; font-size: 13px;"></textarea>
                 <button class="btn-main" style="height: 40px; padding: 0;" onclick="processBulk()">IMPORT ALL</button>
             </div>
@@ -320,6 +326,10 @@
                     <div class="dropdown-item" id="sort-opt-Frequency" onclick="setSortMode('Frequency')">Frequency</div>
                 </div>
             </div>
+        </div>
+
+        <div style="font-size: 12px; color: var(--text-muted); text-align: center; margin-bottom: 15px; padding: 0 10px;">
+            Manage your collection below: rename, delete, or reorder categories to change how they appear on the main page. To edit individual affirmations, simply expand the category.
         </div>
 
         <div id="manage-list"></div>
