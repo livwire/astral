@@ -101,6 +101,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnConfirm.style.color = '';
             }
 
+            // THE ULTIMATE FIX: Rip the popup out of its container and slap it at the very end of the body
+            document.body.appendChild(overlay);
+            overlay.style.setProperty('z-index', '999999', 'important');
             overlay.classList.add('show');
             if (type === 'prompt') { setTimeout(() => inputEl.focus(), 100); }
 
@@ -325,10 +328,21 @@ document.addEventListener('DOMContentLoaded', () => {
         save(K_SEL, selectedCats);
     }
     
+    // --- THE PRO FIX: Restore Progress on Date Change ---
     let todayString = getLogicalDateStr();
     let dailyProgress = load(K_TODAY) || { date: todayString, count: 0 };
-    if (dailyProgress.date !== todayString) { dailyProgress = { date: todayString, count: 0 };
-    save(K_TODAY, dailyProgress); phrases.forEach(p => p.count = 0); save(K_DB, phrases); }
+    
+    if (dailyProgress.date !== todayString) { 
+        let recoveredCount = 0;
+        // Check if we already have progress saved for this logical day
+        if (historyMap[todayString]) {
+            recoveredCount = historyMap[todayString].c !== undefined ? historyMap[todayString].c : (typeof historyMap[todayString] === 'number' ? historyMap[todayString] : 0);
+        }
+        dailyProgress = { date: todayString, count: recoveredCount };
+        save(K_TODAY, dailyProgress); 
+        phrases.forEach(p => p.count = 0); 
+        save(K_DB, phrases); 
+    }
     
     let expandedFocusesMain = {};
     let expandedFocusesManage = {};
@@ -436,8 +450,14 @@ document.addEventListener('DOMContentLoaded', () => {
         prefs.nightOwl = document.getElementById('nightowl-toggle').checked;
         save(K_PREFS, prefs); 
         todayString = getLogicalDateStr();
+        
         if (dailyProgress.date !== todayString) {
-            dailyProgress = { date: todayString, count: 0 };
+            let recoveredCount = 0;
+            // Catch the progress instead of resetting to 0
+            if (historyMap[todayString]) {
+                recoveredCount = historyMap[todayString].c !== undefined ? historyMap[todayString].c : (typeof historyMap[todayString] === 'number' ? historyMap[todayString] : 0);
+            }
+            dailyProgress = { date: todayString, count: recoveredCount };
             save(K_TODAY, dailyProgress);
             phrases.forEach(p => p.count = 0); save(K_DB, phrases);
         }
@@ -690,7 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             let rawPace = catTotal / catDaysDiff; let catPace = rawPace % 1 === 0 ? rawPace : parseFloat(rawPace.toFixed(1));
             
-            html += `<div class="breakdown-card"><div class="breakdown-header" onclick="this.nextElementSibling.classList.toggle('show')"><span>${cat}</span><span class="breakdown-total">${catTotal.toLocaleString()} <span style="font-size:10px;opacity:0.5">▼</span></span></div><div class="breakdown-content"><div style="font-size: 11px; color: var(--text-muted); margin-top: 8px; margin-bottom: 12px; font-style: italic; text-align: center; border-bottom: 1px solid var(--border-glass); padding-bottom: 10px;">You're averaging <span style="color: var(--correct-color); font-weight: bold;">${catPace}</span> <strong>${cat}</strong> affirmations a day!</div>`;
+            html += `<div class="breakdown-card"><div class="breakdown-header" onclick="this.nextElementSibling.classList.toggle('show')"><span>${cat}</span><span class="breakdown-total">${catTotal.toLocaleString()} <span style="opacity:0.5; display: flex; align-items: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span></span></div><div class="breakdown-content"><div style="font-size: 11px; color: var(--text-muted); margin-top: 8px; margin-bottom: 12px; font-style: italic; text-align: center; border-bottom: 1px solid var(--border-glass); padding-bottom: 10px;">You're averaging <span style="color: var(--correct-color); font-weight: bold;">${catPace}</span> <strong>${cat}</strong> affirmations a day!</div>`;
             catPhrases.sort((a,b) => (b.lifetimeCount||0) - (a.lifetimeCount||0)).forEach(p => { html += `<div class="breakdown-item"><span class="b-text">${p.text}</span><span class="b-count">${(p.lifetimeCount||0).toLocaleString()}</span></div>`; });
             html += `</div></div>`;
         });
@@ -1033,7 +1053,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const catPhrases = phrases.filter(p => p.category === cat);
             const isChecked = selectedCats.includes(cat) ? 'checked' : '';
             const isExpanded = expandedFocusesMain[cat];
-            const arrow = isExpanded ? '▼' : '▶';
+            const arrow = isExpanded 
+                ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 2px;"><polyline points="6 9 12 15 18 9"></polyline></svg>`
+                : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 2px;"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
             const totalCompletions = catPhrases.reduce((sum, p) => sum + (p.count || 0), 0);
             const fractionHtml = catPhrases.length > 0 && !isExpanded ? `<span class="fraction-text">${totalCompletions} / ${catPhrases.length}</span>` : '';
 
@@ -1059,15 +1081,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         let html = '';
         categories.forEach(cat => {
-            const catPhrases = phrases.filter(p => p.category === cat); const isExpanded = expandedFocusesManage[cat]; const arrow = isExpanded ? '▼' : '▶';
+            const catPhrases = phrases.filter(p => p.category === cat); const isExpanded = expandedFocusesManage[cat]; const arrow = isExpanded 
+                ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 2px;"><polyline points="6 9 12 15 18 9"></polyline></svg>`
+                : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 2px;"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
             
             let arrowsHtml = '';
             if (prefs.sortMode === 'Manual') {
                 let isFirst = categories.indexOf(cat) === 0;
                 let isLast = categories.indexOf(cat) === categories.length - 1;
                 arrowsHtml = `<div class="sort-arrows">
-                    <span onclick="moveCat('${cat}', -1, event)" style="opacity: ${isFirst ? '0.2' : '0.8'}; pointer-events: ${isFirst ? 'none' : 'auto'}">▲</span>
-                    <span onclick="moveCat('${cat}', 1, event)" style="opacity: ${isLast ? '0.2' : '0.8'}; pointer-events: ${isLast ? 'none' : 'auto'}">▼</span>
+                    <span onclick="moveCat('${cat}', -1, event)" style="opacity: ${isFirst ? '0.2' : '0.8'}; pointer-events: ${isFirst ? 'none' : 'auto'}">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                    </span>
+                    <span onclick="moveCat('${cat}', 1, event)" style="opacity: ${isLast ? '0.2' : '0.8'}; pointer-events: ${isLast ? 'none' : 'auto'}">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </span>
                 </div>`;
             }
 
@@ -1342,59 +1370,39 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- GUIDE EQUIPMENT & STATUS LOGIC ---
-    window.equipGuide = function(cardElement) {
-        let url;
-        if (!cardElement) return;
-        
-        if (typeof cardElement === 'string') {
-            url = cardElement;
-        } else {
-            const img = cardElement.querySelector('.collection-img');
-            if(img) url = img.src;
+    // --- SMART GUIDE EQUIPMENT LOGIC ---
+    window.equipGuide = function(guideName, element) {
+        // 1. Is it locked?
+        if (element.classList.contains('locked')) {
+            const reqLevel = element.getAttribute('data-unlock-level');
+            showDialog('alert', 'Companion Locked', `You must reach Level ${reqLevel} to unlock ${guideName}. Keep doing your daily affirmations!`, '', 'GOT IT', '');
+            return; 
         }
-        
-        if(!url) return;
 
-        if (!prefs.customGuideName) prefs.customGuideName = "Echo";
+        // 2. SMART GRAB: Get the image source directly from the HTML card!
+        const clickedImg = element.querySelector('.collection-img');
+        if (clickedImg) {
+            prefs.activeGuideUrl = clickedImg.src;
+        }
 
-        const mainImg = document.getElementById('companion-image-display');
-        const overlayImg = document.getElementById('overlay-companion-img');
-        if(mainImg) mainImg.src = url;
-        if(overlayImg) overlayImg.src = url;
-
-        prefs.activeGuideUrl = url;
+        // 3. Save to your local storage
+        prefs.activeGuide = guideName;
         save(K_PREFS, prefs);
 
+        // 4. Move the glowing selection border
         document.querySelectorAll('.guide-card').forEach(c => c.classList.remove('active-selection'));
-        if (typeof cardElement !== 'string') {
-            cardElement.classList.add('active-selection');
-        } else {
-            document.querySelectorAll('.guide-card.unlocked').forEach(card => {
-                const img = card.querySelector('.collection-img');
-                if (img && img.src === url) card.classList.add('active-selection');
-            });
+        element.classList.add('active-selection');
+
+        // 5. Update the companion on the main page!
+        const mainImg = document.getElementById('companion-image-display');
+        const mainName = document.getElementById('companion-name-display');
+        
+        // FIX: STRICTLY display the custom name only!
+        if (mainName) mainName.innerText = prefs.customGuideName;
+        
+        if (mainImg && prefs.activeGuideUrl) {
+            mainImg.src = prefs.activeGuideUrl;
         }
-        window.updateGuideLabels();
-    };
-
-    window.updateGuideLabels = function() {
-        document.querySelectorAll('.guide-card').forEach(card => {
-            const img = card.querySelector('.collection-img');
-            const label = card.querySelector('.guide-status-label');
-            if (!img || !label) return;
-
-            if (img.src === prefs.activeGuideUrl) {
-                label.innerText = "Equipped";
-                label.style.color = "var(--correct-color)";
-            } else if (card.classList.contains('locked')) {
-                label.innerText = "Locked";
-                label.style.color = "var(--text-muted)";
-            } else {
-                label.innerText = "Select";
-                label.style.color = "var(--text-main)";
-            }
-        });
     };
 
     window.equipTheme = function(themeName, cardElement) {
@@ -1427,7 +1435,7 @@ document.addEventListener('DOMContentLoaded', () => {
             save(K_PREFS, prefs);
             
             const mainName = document.getElementById('companion-name-display');
-            if(mainName) mainName.innerText = "Guide: " + prefs.customGuideName;
+            if(mainName) mainName.innerText = prefs.customGuideName;
             
             const menuNameBtn = document.getElementById('guides-menu-name-btn');
             if(menuNameBtn) menuNameBtn.innerHTML = `${prefs.customGuideName} <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
@@ -1444,16 +1452,16 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         const defaultGuideCard = document.querySelector('.guide-card.unlocked');
         if (defaultGuideCard) {
-            window.equipGuide(defaultGuideCard);
+            window.equipGuide(defaultGuideCard.getAttribute('data-guide-name') || 'Echo', defaultGuideCard);
         }
     }
     
-    if(mainName) mainName.innerText = "Guide: " + prefs.customGuideName;
+    // FIX: Show only the user's chosen custom name on app load!
+    if(mainName) mainName.innerText = prefs.customGuideName;
+    
     if(menuNameBtn) {
         menuNameBtn.innerHTML = `${prefs.customGuideName} <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
     }
-
-    window.updateGuideLabels();
 
     // --- AUTO-PAINT THEME CARDS ---
     if (typeof APP_THEMES !== 'undefined') {
@@ -1521,4 +1529,27 @@ window.closeGoalOverlay = function() {
 
 window.goHome = function() {
     stopSession();
+};
+
+window.showHelpPopup = function() {
+    const overlay = document.getElementById('custom-dialog-overlay');
+    
+    // Set the text
+    document.getElementById('cd-title').innerText = 'Managing Your Collection';
+    document.getElementById('cd-message').innerHTML = '• Use the icons to rename or delete categories.<br><br>• Reorder items to update your main page.<br><br>• Expand a category to manage its individual affirmations.';
+    
+    // Show/Hide the right elements
+    document.getElementById('cd-message').style.display = 'block';
+    document.getElementById('cd-input').style.display = 'none';
+    document.getElementById('cd-btn-cancel').style.display = 'none'; // Hide cancel so it's just an "OK" alert
+    
+    // Set the confirm button
+    const confirmBtn = document.getElementById('cd-btn-confirm');
+    confirmBtn.innerText = 'GOT IT';
+    confirmBtn.onclick = function() {
+        overlay.classList.remove('show');
+    };
+    
+    // Show the popup!
+    overlay.classList.add('show');
 };
