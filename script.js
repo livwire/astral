@@ -84,7 +84,14 @@ document.addEventListener('DOMContentLoaded', () => {
             } else { inputEl.style.display = 'none'; }
 
             btnConfirm.innerText = confirmText;
-            btnCancel.innerText = cancelText;
+            
+            // THE FIX: Hide the Cancel button completely if we pass an empty string
+            if (cancelText === '') {
+                btnCancel.style.display = 'none';
+            } else {
+                btnCancel.style.display = 'block';
+                btnCancel.innerText = cancelText;
+            }
 
             if (confirmText === 'DELETE' || confirmText === 'RESET') {
                 btnConfirm.style.background = 'var(--wrong-color)';
@@ -439,7 +446,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.applySkip = async function() {
         if (prefs.skipCredits <= 0) {
-            await showDialog('confirm', 'Out of Shields', 'You have used your 3 shields for this month. They will reset on the 1st!', '', 'OK');
+            // Added empty string at the end to hide Cancel
+            await showDialog('confirm', 'Out of Shields', 'You have used your 3 shields for this month. They will reset on the 1st!', '', 'OK', '');
             return;
         }
         
@@ -458,10 +466,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (isMet) {
-            await showDialog('confirm', 'Streak Intact', 'You did not miss yesterday (or it was already protected)! No shield needed.', '', 'OK');
+            // Added empty string at the end to hide Cancel
+            await showDialog('confirm', 'Streak Intact', 'You did not miss yesterday (or it was already protected)! No shield needed.', '', 'OK', '');
             return;
         }
         
+        // This one keeps the Cancel button (we DON'T pass an empty string)
         const confirmed = await showDialog('confirm', 'Apply Silver Shield?', `Use one shield to save yesterday's streak?\nShields remaining: ${prefs.skipCredits}`, '', 'APPLY');
         if (confirmed) {
             prefs.skipCredits--;
@@ -474,7 +484,8 @@ document.addEventListener('DOMContentLoaded', () => {
             historyMap[yStr].s = true; 
             save(K_HISTORY, historyMap);
             
-            await showDialog('confirm', 'Streak Protected', 'Your Silver Shield has been applied for yesterday. Check your calendar!', '', 'OK');
+            // Added empty string at the end to hide Cancel
+            await showDialog('confirm', 'Streak Protected', 'Your Silver Shield has been applied for yesterday. Check your calendar!', '', 'OK', '');
         }
     }
 
@@ -628,6 +639,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     window.closeManager = () => { 
         document.getElementById('manage-overlay').classList.remove('show'); 
+        
+        // --- NEW: Reset the Bulk Upload UI ---
+        document.getElementById('bulk-area').style.display = 'none';
+        document.getElementById('bulk-toggle-btn').style.display = 'block';
+        document.getElementById('bulk-in').value = ''; // Clears the text box too!
+        
         window.updateList(); 
         document.getElementById('me-overlay').classList.add('show');
     };
@@ -684,8 +701,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = getLogicalDate();
         let pastD = new Date(today); let allDates = Object.keys(historyMap).map(k => new Date(k)).filter(d => !isNaN(d));
         let minHistoryDate = allDates.length > 0 ? new Date(Math.min(...allDates)) : new Date(); minHistoryDate.setHours(0,0,0,0);
-        if (currentChartView === 'Day') { pastD.setDate(today.getDate() - 13); } else if (currentChartView === 'Week') { pastD.setDate(today.getDate() - 56);
-        } else if (currentChartView === 'Month') { pastD.setMonth(today.getMonth() - 5); } else if (currentChartView === 'Year') { pastD.setFullYear(today.getFullYear() - 1); }
+        if (currentChartView === 'Day') { 
+            pastD.setDate(today.getDate() - 13); 
+        } else if (currentChartView === 'Week') { 
+            pastD.setDate(today.getDate() - 56);
+        } else if (currentChartView === 'Month') { 
+            pastD.setMonth(today.getMonth() - 5); 
+        } else if (currentChartView === 'Year') { 
+            pastD = new Date(minHistoryDate); 
+        }
         let loopDate = minHistoryDate < pastD ? minHistoryDate : pastD; loopDate.setHours(0,0,0,0); today.setHours(0,0,0,0);
         let bins = []; let binData = {};
         while(loopDate <= today) {
@@ -720,13 +744,9 @@ document.addEventListener('DOMContentLoaded', () => {
             levelContainer.innerHTML = `
                 <div class="level-header"><div class="level-title">Level ${level}</div></div>
                 <div class="level-track">
-                    <div class="level-fill" style="width: ${pct}%;"></div>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); font-weight: bold; margin-top: 5px; padding: 0 5px;">
-                    <span>${level}</span>
-                    <span>${level + 1}</span>
-                </div>
-            `;
+                <div class="level-fill" style="width: ${pct}%;"></div>
+            </div>
+        `;
         }
 
         let currentStreak = 0; let bestStreak = prefs.bestStreak || 0;
@@ -889,7 +909,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.editFolder = async function(oldName, event) {
         event.stopPropagation();
-        const newNameRaw = await showDialog('prompt', 'Rename Focus', 'Enter new name for this Focus:', oldName, 'SAVE');
+        const newNameRaw = await showDialog('prompt', 'Rename Category', 'Enter new name for this Category:', oldName, 'SAVE');
         if (newNameRaw && newNameRaw.trim()) {
             const cleanName = toTitleCase(newNameRaw.trim());
             if (cleanName === oldName) return;
@@ -1018,7 +1038,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const fractionHtml = catPhrases.length > 0 && !isExpanded ? `<span class="fraction-text">${totalCompletions} / ${catPhrases.length}</span>` : '';
 
             html += `<div class="category-card"><div class="category-header" onclick="toggleExpandMain('${cat}')"><label class="custom-cb-label" onclick="event.stopPropagation()"><input type="checkbox" ${isChecked} onchange="toggleCat('${cat}', this.checked, event)"><span class="cb-mark"></span></label><h3><span class="expand-icon">${arrow}</span> ${cat}</h3>${fractionHtml}</div><div class="focus-content" style="display: ${isExpanded ? 'block' : 'none'};">`;
-            if(catPhrases.length === 0) { html += `<div style="text-align:center; color:var(--text-muted); font-size:13px; padding: 7px 15px 15px 15px; font-style: italic;">This Focus is empty.<br>Go to Manage Focuses to add affirmations.</div>`; }
+            if(catPhrases.length === 0) { html += `<div style="text-align:center; color:var(--text-muted); font-size:13px; padding: 7px 15px 15px 15px; font-style: italic;">This category is empty.<br>Go to Manage Affirmations to add more.</div>`; }
             catPhrases.forEach(p => { let colorClass = p.count > 0 ? 'color: var(--correct-color);' : 'color: var(--text-muted); opacity: 0.5;'; html += `<div class="item"><span class="phrase-text">${p.text}</span><div class="meta-container"><span class="count-tag" style="${colorClass}">${p.count}</span></div></div>`; });
             html += `</div></div>`; 
         });
@@ -1035,7 +1055,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (catMenu && catBtn) { 
             catMenu.innerHTML = categories.map(cat => `<div class="dropdown-item" onclick="selectFocusCat('${cat}')">${cat}</div>`).join(''); 
             if (!categories.includes(currentCatSelection)) { currentCatSelection = categories[0] || null; } 
-            catBtn.innerText = currentCatSelection || "No Focuses"; 
+            catBtn.innerText = currentCatSelection || "No Categories"; 
         }
         let html = '';
         categories.forEach(cat => {
@@ -1055,7 +1075,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let safeName = "manage-focus-" + cat.replace(/[^a-zA-Z0-9]/g, '');
 
             html += `<div class="category-card${highlightClass}" style="view-transition-name: ${safeName};"><div class="category-header" onclick="toggleExpandManage('${cat}')"><h3 style="padding-left: 5px;"><span class="expand-icon">${arrow}</span> ${cat}</h3>${arrowsHtml}<span class="icon-action-btn edit-folder" onclick="editFolder('${cat}', event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></span><span class="icon-action-btn delete" onclick="deleteFolder('${cat}', event)">×</span></div><div class="focus-content" style="display: ${isExpanded ? 'block' : 'none'};">`;
-            if(catPhrases.length === 0) { html += `<div style="text-align:center; color:var(--text-muted); font-size:13px; padding: 7px 15px 15px 15px; font-style: italic;">This Focus is empty.<br>Add an affirmation to begin.</div>`; }
+            if(catPhrases.length === 0) { html += `<div style="text-align:center; color:var(--text-muted); font-size:13px; padding: 7px 15px 15px 15px; font-style: italic;">This category is empty.<br>Add an affirmation to begin.</div>`; }
             catPhrases.forEach(p => { 
                 html += `<div class="item"><span class="phrase-text" style="color: var(--text-muted);">${p.text}</span><div class="meta-container">
                     <span class="icon-action-btn edit" onclick="editPhrase('${p.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></span>
@@ -1071,7 +1091,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addPhrase = async function() { 
         const i = document.getElementById('add-in');
         const cat = currentCatSelection;
-        if(!cat) { await showDialog('confirm', 'Error', 'Please create a Focus first.', '', 'OK'); return; }
+        if(!cat) { await showDialog('confirm', 'Error', 'Please create a Category first.', '', 'OK'); return; }
         if(i.value.trim()){ phrases.push({id: uid(), text: i.value.trim().toUpperCase(), count: 0, lifetimeCount: 0, category: cat}); i.value='';
         expandedFocusesManage[cat] = true; updateManagerList(); window.updateList(); } 
     }
@@ -1089,7 +1109,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.processBulk = async function() {
         const cat = currentCatSelection;
-        if(!cat) { await showDialog('confirm', 'Error', 'Please create a Focus first.', '', 'OK'); return; }
+        if(!cat) { await showDialog('confirm', 'Error', 'Please create a Category first.', '', 'OK'); return; }
         const lines = document.getElementById('bulk-in').value.split('\n');
         lines.forEach(l => { if(l.trim()) phrases.push({id: uid(), text: l.trim().toUpperCase(), count: 0, lifetimeCount: 0, category: cat}); });
         document.getElementById('bulk-in').value = '';
@@ -1245,12 +1265,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 vibrateDevice('rank');
                 document.getElementById('game-progress-fill').classList.add('progress-dimmed');
                 
+                const currentLevel = getLevelInfo(prefs.lifetimeTotal || 0).level;
+                
+                const levelNumEl = document.getElementById('level-up-number');
                 const descEl = document.getElementById('level-up-desc');
                 const nameEl = document.getElementById('reward-name');
                 const visualEl = document.getElementById('reward-visual');
                 const btnContainer = document.getElementById('level-btns-container');
 
-                // The pure CSS glowing orb
                 const orbHTML = `
                     <div class="celestial-orb-wrapper">
                         <div class="orbit-ring orbit-ring-2"></div>
@@ -1259,37 +1281,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
 
-                // Look up the current level in our Master Dictionary
-                const reward = LEVEL_REWARDS[newLevelInfo.level];
+                levelNumEl.innerText = `You've reached Level ${currentLevel}!`;
+                nameEl.style.display = 'block';
+
+                const reward = LEVEL_REWARDS[currentLevel];
 
                 if (reward) {
-                    // Specific Reward (Guide/Theme)
                     descEl.innerText = `✦ NEW ${reward.type} ✦`;
                     visualEl.innerHTML = reward.visual;
                     nameEl.innerText = reward.name;
                     
+                    // THE FIX: Stripped naked! Just your native classes.
                     btnContainer.innerHTML = `
                         ${reward.actionHtml}
-                        <button class="btn-main" onclick="closeLevelUp()">CONTINUE JOURNEY</button>
+                        <button class="btn-main" onclick="closeLevelUp()">CONTINUE</button>
                     `;
-                } else if (newLevelInfo.level % 5 === 0) {
-                    // Mystery Milestone
+                } else if (currentLevel % 5 === 0) {
                     descEl.innerText = `✦ MYSTERY REWARD ✦`;
                     visualEl.innerHTML = orbHTML;
                     nameEl.innerText = "UNKNOWN ITEM";
-                    btnContainer.innerHTML = `<button class="btn-main" onclick="closeLevelUp()">CONTINUE JOURNEY</button>`;
+                    btnContainer.innerHTML = `<button class="btn-main" style="width: 100%;" onclick="closeLevelUp()">CONTINUE JOURNEY</button>`;
                 } else {
-                    // Regular Level
-                    descEl.innerText = "Your cosmic energy expands.";
-                    nameEl.innerText = `You've reached Level ${newLevelInfo.level}`;
+                    descEl.innerText = "YOUR COSMIC ENERGY HAS EXPANDED";
+                    nameEl.style.display = 'none'; 
                     visualEl.innerHTML = orbHTML; 
-                    btnContainer.innerHTML = `<button class="btn-main" onclick="closeLevelUp()">CONTINUE JOURNEY</button>`;
+                    btnContainer.innerHTML = `<button class="btn-main" style="width: 100%;" onclick="closeLevelUp()">CONTINUE JOURNEY</button>`;
                 }
                 
-                // Triggers EXISTING code that actually unlocks the Themes/Guides
                 if (typeof window.checkUnlocks === 'function') window.checkUnlocks();
 
-                // Trigger the Glowing Modal and Particles
                 setTimeout(() => { document.getElementById('level-up-overlay').classList.add('active'); }, 800);
             }
             else if (justHitGoal && !prefs.zenMode) { 
