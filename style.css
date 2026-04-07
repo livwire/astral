@@ -43,6 +43,9 @@
         html {
             background-color: var(--bg-base);
             transition: background-color 1.5s ease;
+            
+            /* THE FIX: Prevents the background flash during sorting animations */
+            view-transition-name: none; 
         }
 
         * {
@@ -1785,6 +1788,7 @@
         }
 
         /* --- COLLECTIONS & UNLOCKS --- */
+        /* Base Grid: Defaults to 2 columns (for Guides) */
         .collection-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -1792,11 +1796,18 @@
             padding: 5px;
         }
 
+        /* Modifier Grid: Forces 3 columns (for Themes) */
+        .collection-grid.themes-layout {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            padding: 10px 5px;
+        }
+
         .collection-card {
             background: var(--card-glass);
             border: 1px solid var(--border-glass);
             border-radius: 20px;
-            padding: 15px 10px;
+            padding: 10px 5px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -1856,10 +1867,10 @@
 
         /* Theme Previews */
         .theme-preview {
-            width: 100%;
-            aspect-ratio: 1;
-            border-radius: 12px;
-            margin-bottom: 10px;
+            width: 85%; /* <-- CHANGED: Shrinks the image so it doesn't touch the sides */
+            margin: 5px auto 12px auto; /* <-- CHANGED: Centers the image and adds breathing room top & bottom */
+            aspect-ratio: 2 / 3; 
+            border-radius: 8px; /* <-- TWEAKED: Slightly smaller border radius looks better on smaller images */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -2061,3 +2072,11 @@
         #custom-dialog-overlay {
     z-index: 9999 !important;
 }
+
+/* --- CUSTOM DIALOG INPUT SPACING --- */
+        #cd-input,
+        #cd-textarea {
+            width: 100%;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
