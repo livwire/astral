@@ -1842,12 +1842,14 @@
         }
 
         .collection-img {
-            width: 60px;
-            height: 60px;
-            object-fit: contain;
-            margin-bottom: 10px;
-            filter: drop-shadow(0 0 10px rgba(98, 236, 236, 0.2));
-        }
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    margin: 0 auto 10px auto;
+    display: block;
+    /* This mixes your theme's accent color with transparency to keep that soft 20% faint glow! */
+    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--correct-color) 40%, transparent));
+}
 
         .collection-name {
             font-size: 13px;
@@ -2071,6 +2073,117 @@
 
         #custom-dialog-overlay {
     z-index: 9999 !important;
+}
+
+/* --- CELEBRATION BOUNCE (GENTLER) --- */
+@keyframes fastBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+.bounce-fast {
+    animation: fastBounce 1s ease-in-out infinite !important;
+}
+
+/* --- ECHO'S ONBOARDING SPEECH BUBBLE --- */
+.pet-container {
+    position: relative; 
+    z-index: 400; 
+}
+
+.pet-podium {
+    position: static !important; 
+}
+
+.echo-bubble-container {
+    position: absolute;
+    top: calc(100% - 50px); 
+    left: 50%;
+    transform: translateX(-50%) translateY(-10px); 
+    width: 90%;
+    max-width: 320px;
+    
+    background: var(--overlay-bg); 
+    /* 1. HEAVIER BLUR & SLIGHT DARKENING to mask the text behind it */
+    backdrop-filter: blur(40px) brightness(0.8);
+    -webkit-backdrop-filter: blur(40px) brightness(0.8);
+    border: 1px solid var(--border-glass);
+    border-top: 2px solid var(--correct-color); 
+    border-radius: 20px;
+    padding: 22px 20px;
+    
+    /* 2. MASSIVE THICK SHADOW to lift it completely off the busy background */
+    box-shadow: 0 35px 60px 10px rgba(0, 0, 0, 0.95), 0 0 30px 5px rgba(0, 0, 0, 0.7);
+    
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 500;
+}
+
+.echo-bubble-container.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(15px); 
+}
+
+/* THE FIX: A rotated square tail naturally inherits the theme's background! */
+.echo-bubble-container::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 14px;
+    height: 14px;
+    background: var(--overlay-bg);
+    border-left: 2px solid var(--correct-color);
+    border-top: 2px solid var(--correct-color);
+    border-top-left-radius: 3px;
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+}
+
+.echo-bubble-text {
+    /* THE FIX: Stripped out the shadows and forced weights so it matches your app */
+    font-size: 15px;
+    color: var(--text-main);
+    text-align: center;
+    margin-bottom: 18px;
+}
+
+.echo-bubble-input {
+    width: 100%;
+    /* THE FIX: Native theme input background */
+    background: var(--input-bg);
+    border: 1px solid var(--border-glass);
+    color: var(--text-main);
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 15px;
+    margin-bottom: 15px;
+    outline: none;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.echo-bubble-input:focus {
+    border-color: var(--correct-color);
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.1), 0 0 10px color-mix(in srgb, var(--correct-color) 30%, transparent);
+}
+
+.echo-bubble-btns {
+    display: flex;
+    gap: 12px;
+}
+
+/* THE FIX: Force both buttons to share the exact same shape and size */
+.echo-bubble-btns button {
+    border-radius: 12px !important;
+    padding: 12px !important;
+    font-size: 12px !important;
+    flex: 1;
+    font-weight: bold;
+    letter-spacing: 0.5px;
 }
 
 /* --- CUSTOM DIALOG INPUT SPACING --- */
