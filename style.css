@@ -2100,10 +2100,8 @@
     left: 50%;
     transform: translateX(-50%) translateY(-10px); 
     
-    /* 1. THE CUTOFF FIX: 
-       'calc(100% - 80px)' ensures a 40px gap on the left and right.
-       This gives the shadow maximum room to fade on small screens. */
-    width: calc(100% - 80px); 
+    /* 1. Guaranteed space on the sides so it NEVER hits the edge */
+    width: calc(100% - 60px); 
     max-width: 320px;
     
     background: var(--overlay-bg); 
@@ -2115,11 +2113,12 @@
     border-radius: 20px;
     padding: 22px 20px;
     
-    /* 2. THE VARIABLE SHADOW:
-       This takes your theme's '--bg-base' and mixes it with black.
-       In Astral: It creates a deep, dark space shadow.
-       In Cloud: It creates a soft, slate-grey shadow. */
-    filter: drop-shadow(0px 10px 20px color-mix(in srgb, var(--bg-base), black 40%));
+    /* 2. THE BULLETPROOF VARIABLE SHADOW: 
+       Using 'box-shadow' bypasses the mobile bug.
+       'color-mix' automatically grabs your theme's correct-color 
+       (Teal in Astral, Blue in Cloud) and makes it 20% transparent.
+       You never have to write a custom shadow for a theme again. */
+    box-shadow: 0 20px 40px color-mix(in srgb, var(--correct-color) 20%, transparent);
     
     opacity: 0;
     pointer-events: none;
