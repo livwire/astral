@@ -2099,20 +2099,27 @@
     top: calc(100% - 50px); 
     left: 50%;
     transform: translateX(-50%) translateY(-10px); 
-    width: 90%;
+    
+    /* 1. THE CUTOFF FIX: 
+       'calc(100% - 80px)' ensures a 40px gap on the left and right.
+       This gives the shadow maximum room to fade on small screens. */
+    width: calc(100% - 80px); 
     max-width: 320px;
     
     background: var(--overlay-bg); 
-    /* 1. HEAVIER BLUR & SLIGHT DARKENING to mask the text behind it */
-    backdrop-filter: blur(40px) brightness(0.8);
-    -webkit-backdrop-filter: blur(40px) brightness(0.8);
+    backdrop-filter: blur(40px) brightness(0.9);
+    -webkit-backdrop-filter: blur(40px) brightness(0.9);
+    
     border: 1px solid var(--border-glass);
     border-top: 2px solid var(--correct-color); 
     border-radius: 20px;
     padding: 22px 20px;
     
-    /* 2. MASSIVE THICK SHADOW to lift it completely off the busy background */
-    box-shadow: 0 35px 60px 10px rgba(0, 0, 0, 0.95), 0 0 30px 5px rgba(0, 0, 0, 0.7);
+    /* 2. THE VARIABLE SHADOW:
+       This takes your theme's '--bg-base' and mixes it with black.
+       In Astral: It creates a deep, dark space shadow.
+       In Cloud: It creates a soft, slate-grey shadow. */
+    filter: drop-shadow(0px 10px 20px color-mix(in srgb, var(--bg-base), black 40%));
     
     opacity: 0;
     pointer-events: none;
