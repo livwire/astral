@@ -289,12 +289,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- PREFS LOADING & ULTIMATE SANITIZER ---
     let prefs = load(K_PREFS);
     if (!prefs || typeof prefs !== 'object') { 
-        prefs = { lightMode: false, zenMode: false, showBackground: true, sound: true, haptics: true, nightOwl: false, lifetimeTotal: 0, bestStreak: 0, skipCredits: 3, lastSkipResetMonth: "", vacationMode: false, lastActiveDate: Date.now(), sortMode: 'Manual', customGuideName: "Echo" };
+        prefs = { lightMode: false, zenMode: false, showBackground: true, soundUI: true, soundGame: true, haptics: true, nightOwl: false, lifetimeTotal: 0, bestStreak: 0, skipCredits: 3, lastSkipResetMonth: "", vacationMode: false, lastActiveDate: Date.now(), sortMode: 'Manual', customGuideName: "Echo" };
     } else {
         if (typeof prefs.lightMode === 'undefined') prefs.lightMode = false;
         if (typeof prefs.zenMode === 'undefined') prefs.zenMode = false;
         if (typeof prefs.showBackground === 'undefined') prefs.showBackground = true;
-        if (typeof prefs.sound === 'undefined') prefs.sound = true;
+        // The Sound Fix:
+        if (typeof prefs.soundUI === 'undefined') prefs.soundUI = prefs.sound !== undefined ? prefs.sound : true;
+        if (typeof prefs.soundGame === 'undefined') prefs.soundGame = prefs.sound !== undefined ? prefs.sound : true;
         if (typeof prefs.haptics === 'undefined') prefs.haptics = true;
         if (typeof prefs.nightOwl === 'undefined') prefs.nightOwl = false;
         if (typeof prefs.vacationMode === 'undefined') prefs.vacationMode = false;
@@ -448,16 +450,37 @@ document.addEventListener('DOMContentLoaded', () => {
         save(K_HISTORY, historyMap);
     }
 
-    if (prefs.vacationMode && prefs.lastActiveDate && (nowTime - prefs.lastActiveDate > 24 * 60 * 60 * 1000)) {
-        setTimeout(async () => {
-            const result = await showDialog('confirm', 'Welcome Back!', 'Ready to resume your daily practice, or do you need to stay in Vacation Mode a little longer?', '', "RESUME PRACTICE", "STAY ON VACATION");
-            if (result) {
-                prefs.vacationMode = false;
-                save(K_PREFS, prefs);
-                applyVacationUI();
-            }
-        }, 500); 
+    // --- NEW VACATION MODE RETURN PROMPT ---
+    function checkVacationStatus() {
+        if (!prefs.vacationMode) return; 
+
+        let today = getLogicalDateStr();
+
+        // If the current logical day is DIFFERENT from the day they started vacation...
+        if (prefs.vacationDate && prefs.vacationDate !== today) {
+            
+            let guideName = prefs.customGuideName || "Echo";
+
+            window.guideSpeak(
+                "Welcome Back", 
+                `I see you're in vacation mode. Are you ready to resume your practice with me?`, 
+                "RESUME", 
+                () => {
+                    // Turn off vacation mode and hide the banner!
+                    prefs.vacationMode = false;
+                    save(K_PREFS, prefs);
+                    applyVacationUI();
+                },
+                "NOT YET", 
+                () => {
+                    // Update the vacation date to TODAY so we don't bother them again until tomorrow!
+                    prefs.vacationDate = today;
+                    save(K_PREFS, prefs);
+                }
+            );
+        }
     }
+    setTimeout(checkVacationStatus, 1000);
 
     prefs.lastActiveDate = nowTime;
     save(K_PREFS, prefs);
@@ -473,14 +496,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.toggleVacation = function() {
         prefs.vacationMode = document.getElementById('vacation-toggle').checked;
+        let dStr = getLogicalDateStr();
+
         if (prefs.vacationMode) {
             prefs.lastActiveDate = Date.now();
-            let dStr = getLogicalDateStr();
+            prefs.vacationDate = dStr; // <--- ADDED THIS LINE!
             if (!historyMap[dStr]) historyMap[dStr] = { c: 0, g: dailyGoal };
             if (typeof historyMap[dStr] === 'number') historyMap[dStr] = { c: historyMap[dStr], g: dailyGoal };
             historyMap[dStr].v = true;
             save(K_HISTORY, historyMap);
+        } else {
+            // --- THE FIX: Erase the free pass if they turn it off! ---
+            if (historyMap[dStr] && typeof historyMap[dStr] === 'object') {
+                historyMap[dStr].v = false;
+                save(K_HISTORY, historyMap);
+            }
         }
+        
         save(K_PREFS, prefs);
         applyVacationUI();
     };
@@ -514,7 +546,10 @@ document.addEventListener('DOMContentLoaded', () => {
         applyBackgroundUI(); 
     }
 
-    window.toggleSound = function() { prefs.sound = document.getElementById('sound-toggle').checked; save(K_PREFS, prefs); }
+    // THE FIX: Two new functions to replace the single toggleSound
+    window.toggleUISound = function() { prefs.soundUI = document.getElementById('sound-ui-toggle').checked; save(K_PREFS, prefs); }
+    window.toggleGameSound = function() { prefs.soundGame = document.getElementById('sound-game-toggle').checked; save(K_PREFS, prefs); }
+
     window.toggleHaptics = function() { prefs.haptics = document.getElementById('haptics-toggle').checked; save(K_PREFS, prefs); }
     window.toggleNightOwl = function() { 
         prefs.nightOwl = document.getElementById('nightowl-toggle').checked;
@@ -697,7 +732,8 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('zen-toggle').checked = !!prefs.zenMode;
             document.getElementById('vacation-toggle').checked = !!prefs.vacationMode;
             document.getElementById('bg-toggle').checked = !!prefs.showBackground;
-            document.getElementById('sound-toggle').checked = !!prefs.sound;
+            if (document.getElementById('sound-ui-toggle')) document.getElementById('sound-ui-toggle').checked = !!prefs.soundUI;
+            if (document.getElementById('sound-game-toggle')) document.getElementById('sound-game-toggle').checked = !!prefs.soundGame;
             document.getElementById('haptics-toggle').checked = !!prefs.haptics;
             document.getElementById('nightowl-toggle').checked = !!prefs.nightOwl;
             document.getElementById('skips-remaining-text').innerText = prefs.skipCredits !== undefined ? prefs.skipCredits : 3;
@@ -724,7 +760,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('zen-toggle').checked = !!prefs.zenMode;
         document.getElementById('vacation-toggle').checked = !!prefs.vacationMode;
         document.getElementById('bg-toggle').checked = !!prefs.showBackground;
-        document.getElementById('sound-toggle').checked = !!prefs.sound;
+        
+        // THE FIX: Assign the two sound toggles safely
+        if (document.getElementById('sound-ui-toggle')) document.getElementById('sound-ui-toggle').checked = !!prefs.soundUI;
+        if (document.getElementById('sound-game-toggle')) document.getElementById('sound-game-toggle').checked = !!prefs.soundGame;
+
         document.getElementById('haptics-toggle').checked = !!prefs.haptics;
         document.getElementById('nightowl-toggle').checked = !!prefs.nightOwl;
         document.getElementById('settings-overlay').classList.add('show');
@@ -936,7 +976,9 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (type === 'rank') window.navigator.vibrate([50, 50, 50, 50, 50, 50, 50, 50, 600]);
         } catch(e){} 
     }
-    function playTone(freq, type, duration, startTime=0, vol=0.1) { if(!audioCtx || !prefs.sound) return;
+    
+    // THE FIX: Game sounds use prefs.soundGame
+    function playTone(freq, type, duration, startTime=0, vol=0.1) { if(!audioCtx || !prefs.soundGame) return;
         const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime + startTime); gain.gain.setValueAtTime(vol, audioCtx.currentTime + startTime);
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + startTime + duration); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(audioCtx.currentTime + startTime); osc.stop(audioCtx.currentTime + startTime + duration);
     }
@@ -947,8 +989,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function soundGoalReached() { playTone(440, 'sine', 0.8, 0, 0.15); playTone(554, 'sine', 0.8, 0.15, 0.15); playTone(659, 'sine', 0.8, 0.3, 0.15); playTone(880, 'sine', 1.2, 0.45, 0.2); }
     
     function soundRankUp() {
-        if(!audioCtx || !prefs.sound) return;
-        playTone(440, 'sine', 0.15, 0, 0.1);      
+        if(!audioCtx || !prefs.soundGame) return;
+        playTone(440, 'sine', 0.15, 0, 0.1);     
         playTone(554.37, 'sine', 0.15, 0.1, 0.1); 
         playTone(659.25, 'sine', 0.15, 0.2, 0.1); 
         playTone(880, 'sine', 0.15, 0.3, 0.15);   
@@ -1019,6 +1061,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.editFolder = async function(oldName, event) {
         event.stopPropagation();
+        if(window.playGlassTap) window.playGlassTap(); // THE AUDIO FIX!
         const newNameRaw = await showDialog('prompt', 'Rename Category', 'Enter new name for this Category:', oldName, 'SAVE');
         if (newNameRaw && newNameRaw.trim()) {
             const cleanName = toTitleCase(newNameRaw.trim());
@@ -1065,6 +1108,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.deleteFolder = function(cat, event) {
         event.stopPropagation();
+        if(window.playGlassTap) window.playGlassTap(); // THE AUDIO FIX!
         let catPhrases = phrases.filter(p => p.category === cat);
         let catIndex = categories.indexOf(cat);
         
@@ -1092,11 +1136,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.toggleCat = function(cat, isChecked, event) {
         event.stopPropagation();
+        if(window.playGlassTap) window.playGlassTap(); // THE AUDIO FIX!
         if(isChecked) { if(!selectedCats.includes(cat)) selectedCats.push(cat); } else { selectedCats = selectedCats.filter(c => c !== cat); }
         save(K_SEL, selectedCats); window.updateList();
     }
     
     window.toggleAllFocuses = function(event) {
+        if(window.playGlassTap) window.playGlassTap(); // THE AUDIO FIX!
         const isChecked = event.target.checked;
         if (isChecked) { selectedCats = [...categories]; } else { selectedCats = []; }
         save(K_SEL, selectedCats); window.updateList();
@@ -1107,6 +1153,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.moveCat = function(cat, dir, event) {
         event.stopPropagation();
+        if(window.playGlassTap) window.playGlassTap(); // THE AUDIO FIX!
         let idx = categories.indexOf(cat);
         if (idx < 0) return;
         let newIdx = idx + dir;
@@ -1141,13 +1188,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // --- NEW: THE MAIN PAGE EMPTY STATE ---
         if (categories.length === 0) {
-            c.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:14px; padding: 50px 20px; font-style: italic; line-height: 1.6;">Your journey begins here.<br><br>Go to <strong>Account > Manage Affirmations</strong> to create your first category.</div>`;
+            c.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:14px; padding: 20px; font-style: italic; line-height: 1.6;">Your journey begins here.<br><br>Go to <strong>Account > Manage Affirmations</strong> to create your first category.</div>`;
             save(K_DB, phrases); window.updateProgressUI(); 
             return; // Stop running the rest of the function!
         }
 
         let html = '';
         categories.forEach(cat => {
+            let safeCat = cat.replace(/'/g, "\\'"); 
             const catPhrases = phrases.filter(p => p.category === cat);
             const isChecked = selectedCats.includes(cat) ? 'checked' : '';
             const isExpanded = expandedFocusesMain[cat];
@@ -1157,7 +1205,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalCompletions = catPhrases.reduce((sum, p) => sum + (p.count || 0), 0);
             const fractionHtml = catPhrases.length > 0 && !isExpanded ? `<span class="fraction-text">${totalCompletions} / ${catPhrases.length}</span>` : '';
 
-            html += `<div class="category-card"><div class="category-header" onclick="toggleExpandMain('${cat}')"><label class="custom-cb-label" onclick="event.stopPropagation()"><input type="checkbox" ${isChecked} onchange="toggleCat('${cat}', this.checked, event)"><span class="cb-mark"></span></label><h3><span class="expand-icon">${arrow}</span> ${cat}</h3>${fractionHtml}</div><div class="focus-content" style="display: ${isExpanded ? 'block' : 'none'};">`;
+            html += `<div class="category-card"><div class="category-header" onclick="toggleExpandMain('${safeCat}')"><label class="custom-cb-label" onclick="event.stopPropagation()"><input type="checkbox" ${isChecked} onchange="toggleCat('${safeCat}', this.checked, event)"><span class="cb-mark"></span></label><h3><span class="expand-icon">${arrow}</span> ${cat}</h3>${fractionHtml}</div><div class="focus-content" style="display: ${isExpanded ? 'block' : 'none'};">`;
             if(catPhrases.length === 0) { html += `<div style="text-align:center; color:var(--text-muted); font-size:13px; padding: 7px 15px 15px 15px; font-style: italic;">It's a little quiet here.<br>Go to Manage Affirmations to add an affirmation to this category.</div>`; }
             catPhrases.forEach(p => { let colorClass = p.count > 0 ? 'color: var(--correct-color);' : 'color: var(--text-muted); opacity: 0.5;'; html += `<div class="item"><span class="phrase-text">${p.text}</span><div class="meta-container"><span class="count-tag" style="${colorClass}">${p.count}</span></div></div>`; });
             html += `</div></div>`; 
@@ -1180,13 +1228,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- NEW: THE MANAGE PAGE EMPTY STATE ---
         if (categories.length === 0) {
-            c.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:14px; padding: 40px 20px; font-style: italic; line-height: 1.6;">Your collection is empty.<br><br>Use the tools above to create your first category!</div>`;
+            c.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:14px; padding: 20px; font-style: italic; line-height: 1.6;">Your collection is empty.<br><br>Use the tools above to create your first category!</div>`;
             lastMovedCat = null; 
             return; // Stop running the rest of the function!
         }
 
         let html = '';
         categories.forEach(cat => {
+            let safeCat = cat.replace(/'/g, "\\'");
             const catPhrases = phrases.filter(p => p.category === cat); const isExpanded = expandedFocusesManage[cat]; const arrow = isExpanded 
                 ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 2px;"><polyline points="6 9 12 15 18 9"></polyline></svg>`
                 : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 2px;"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
@@ -1196,10 +1245,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 let isFirst = categories.indexOf(cat) === 0;
                 let isLast = categories.indexOf(cat) === categories.length - 1;
                 arrowsHtml = `<div class="sort-arrows">
-                    <span onclick="moveCat('${cat}', -1, event)" style="opacity: ${isFirst ? '0.2' : '0.8'}; pointer-events: ${isFirst ? 'none' : 'auto'}">
+                    <span onclick="moveCat('${safeCat}', -1, event)" style="opacity: ${isFirst ? '0.2' : '0.8'}; pointer-events: ${isFirst ? 'none' : 'auto'}">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
                     </span>
-                    <span onclick="moveCat('${cat}', 1, event)" style="opacity: ${isLast ? '0.2' : '0.8'}; pointer-events: ${isLast ? 'none' : 'auto'}">
+                    <span onclick="moveCat('${safeCat}', 1, event)" style="opacity: ${isLast ? '0.2' : '0.8'}; pointer-events: ${isLast ? 'none' : 'auto'}">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </span>
                 </div>`;
@@ -1208,7 +1257,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let highlightClass = (cat === lastMovedCat) ? ' moved-highlight' : '';
             let safeName = "manage-focus-" + cat.replace(/[^a-zA-Z0-9]/g, '');
 
-            html += `<div class="category-card${highlightClass}" style="view-transition-name: ${safeName};"><div class="category-header" onclick="toggleExpandManage('${cat}')"><h3 style="padding-left: 5px;"><span class="expand-icon">${arrow}</span> ${cat}</h3>${arrowsHtml}<span class="icon-action-btn edit-folder" onclick="editFolder('${cat}', event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></span><span class="icon-action-btn delete" onclick="deleteFolder('${cat}', event)">×</span></div><div class="focus-content" style="display: ${isExpanded ? 'block' : 'none'};">`;
+            html += `<div class="category-card${highlightClass}" style="view-transition-name: ${safeName};"><div class="category-header" onclick="toggleExpandManage('${safeCat}')"><h3 style="padding-left: 5px;"><span class="expand-icon">${arrow}</span> ${cat}</h3>${arrowsHtml}<span class="icon-action-btn edit-folder" onclick="editFolder('${safeCat}', event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></span><span class="icon-action-btn delete" onclick="deleteFolder('${safeCat}', event)">×</span></div><div class="focus-content" style="display: ${isExpanded ? 'block' : 'none'};">`;
             if(catPhrases.length === 0) { html += `<div style="text-align:center; color:var(--text-muted); font-size:13px; padding: 7px 15px 15px 15px; font-style: italic;">This category is empty.<br>Add an affirmation to begin.</div>`; }
             catPhrases.forEach(p => { 
                 html += `<div class="item"><span class="phrase-text" style="color: var(--text-muted);">${p.text}</span><div class="meta-container">
@@ -1304,7 +1353,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- GAME LOOP LOGIC ---
     window.startSession = async function() {
         const activePhrases = phrases.filter(p => selectedCats.includes(p.category));
-        if(activePhrases.length === 0) { await showDialog('confirm', 'No Affirmations', 'Please select at least one category that contains affirmations.', '', 'GOT IT', ''); return; }
+        
+        if(activePhrases.length === 0) { 
+            // THE FIX: Now includes the header title as the first parameter!
+            window.guideSpeak("No Affirmations Selected", "Please select at least one category to begin our session.", "GOT IT");
+            return; 
+        }
+        
         let newTodayStr = getLogicalDateStr();
         if (dailyProgress.date !== newTodayStr) { dailyProgress = { date: newTodayStr, count: 0 }; save(K_TODAY, dailyProgress); phrases.forEach(ph => ph.count = 0); save(K_DB, phrases); window.updateProgressUI(); document.getElementById('game-progress-fill').classList.remove('progress-dimmed'); } else if (dailyProgress.count >= dailyGoal) { document.getElementById('game-progress-fill').classList.add('progress-dimmed'); } else { document.getElementById('game-progress-fill').classList.remove('progress-dimmed'); }
         window.updateGameProgressUI(); initAudio(); document.getElementById('lib').style.display = 'none'; document.getElementById('game').style.display = 'flex'; document.body.classList.add('game-active');
@@ -1318,9 +1373,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    window.stopSession = function() { document.getElementById('lib').style.display = 'flex'; document.getElementById('game').style.display = 'none'; document.body.classList.remove('screen-goal-breathe'); document.body.classList.remove('game-active'); document.getElementById('goal-overlay').classList.remove('show'); document.getElementById('level-up-overlay').classList.remove('active'); window.updateList(); }
+    window.stopSession = function() { 
+        document.getElementById('lib').style.display = 'flex'; 
+        document.getElementById('game').style.display = 'none'; 
+        document.body.classList.remove('screen-goal-breathe'); 
+        document.body.classList.remove('game-active'); 
+        document.getElementById('goal-overlay').classList.remove('show'); 
+        document.getElementById('level-up-overlay').classList.remove('active'); 
+        
+        // Stops the bounce if they leave the screen!
+        const overlayPetImg = document.getElementById('overlay-companion-img');
+        if (overlayPetImg) overlayPetImg.classList.remove('bounce-fast');
+        
+        window.updateList(); 
+    }
 
-    window.continueGame = function() { document.getElementById('goal-overlay').classList.remove('show'); document.body.classList.remove('screen-goal-breathe'); nextRound(); }
+    window.continueGame = function() { 
+        document.getElementById('goal-overlay').classList.remove('show'); 
+        document.body.classList.remove('screen-goal-breathe'); 
+        
+        // Stops the bounce!
+        const overlayPetImg = document.getElementById('overlay-companion-img');
+        if (overlayPetImg) overlayPetImg.classList.remove('bounce-fast');
+        
+        nextRound(); 
+    }
     
     window.closeLevelUp = function() { document.getElementById('level-up-overlay').classList.remove('active'); document.body.classList.remove('screen-goal-breathe'); nextRound(); }
 
@@ -1333,6 +1410,38 @@ document.addEventListener('DOMContentLoaded', () => {
         activeState = null; save(K_STATE, null);
         nextRound();
     }
+
+    // --- GOAL MESSAGES DECK LOGIC ---
+    const GOAL_MESSAGES = [
+        "The stars have aligned. You've completed your daily practice.",
+        "Your inner light is beaming and growing brighter each day.",
+        "The path is unfolding right beneath your feet.",
+        "{NAME}, your energy is unmatched today. Beautifully done.",
+        "You are the architect of your life.",
+        "Energy shifted. Intentions set. Dreams ignited.",
+        "You are a magnet for everything you desire.",
+        "You've found your center among the stars.",
+        "You've honored your intentions today, and the universe takes notice.",
+        "Every affirmation is a testament to your growth.",
+        "Another step forward on your journey. I am proud to guide you.",
+        "Take a deep breath, {NAME}. You did wonderfully today."
+    ];
+
+    window.getGoalMessage = function() {
+        let goalDeck = load('ASTRAL_GOAL_DECK_V10') || [];
+        if (goalDeck.length === 0) {
+            goalDeck = [...GOAL_MESSAGES];
+            for (let i = goalDeck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [goalDeck[i], goalDeck[j]] = [goalDeck[j], goalDeck[i]];
+            }
+        }
+        let msg = goalDeck.pop();
+        save('ASTRAL_GOAL_DECK_V10', goalDeck);
+
+        let displayName = (prefs.username && prefs.username.trim() !== "") ? prefs.username : "Stargazer";
+        return msg.replace("{NAME}", displayName);
+    };
 
     let currentObj = null; let charIdx = 0; let gridData = [];
     function nextRound() {
@@ -1450,7 +1559,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     visualEl.innerHTML = reward.visual;
                     nameEl.innerText = reward.name;
                     
-                    // THE FIX: Stripped naked! Just your native classes.
                     btnContainer.innerHTML = `
                         ${reward.actionHtml}
                         <button class="btn-main" onclick="closeLevelUp()">CONTINUE</button>
@@ -1479,8 +1587,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const mainPetImg = document.getElementById('companion-image-display');
                 const overlayPetImg = document.getElementById('overlay-companion-img');
+                
                 if (mainPetImg && overlayPetImg) {
                     overlayPetImg.src = mainPetImg.src;
+                    overlayPetImg.classList.add('bounce-fast'); // <--- ADDED CELEBRATION BOUNCE!
+                }
+
+                // <--- PULLS A RANDOM MESSAGE FROM THE DECK!
+                const subtitle = document.querySelector('#goal-overlay .goal-subtitle');
+                if (subtitle) {
+                    subtitle.innerText = getGoalMessage();
                 }
 
                 setTimeout(() => { document.getElementById('goal-overlay').classList.add('show'); }, 800);
@@ -1627,17 +1743,95 @@ document.addEventListener('DOMContentLoaded', () => {
                     previewDiv.style.backgroundPosition = "center";
                     previewDiv.style.borderRadius = "8px";
 
+                    // --- NEW BLOCK: NO GRAY PILL, ORIGINAL SIZED DOTS ---
                     previewDiv.innerHTML = `
-                        <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; background: rgba(0,0,0,0.5); padding: 4px 6px; border-radius: 12px; backdrop-filter: blur(4px);">
-                            <div style="width: 12px; height: 12px; border-radius: 50%; background: ${themeData["--bg-base"]}; border: 1px solid rgba(255,255,255,0.3);"></div>
-                            <div style="width: 12px; height: 12px; border-radius: 50%; background: ${themeData["--text-main"]}; border: 1px solid rgba(255,255,255,0.3);"></div>
-                            <div style="width: 12px; height: 12px; border-radius: 50%; background: ${themeData["--correct-color"]}; border: 1px solid rgba(255,255,255,0.3);"></div>
+                        <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px;">
+                            <div style="width: 12px; height: 12px; border-radius: 50%; background: ${themeData["--bg-base"]}; border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 1px 3px rgba(0,0,0,0.6);"></div>
+                            <div style="width: 12px; height: 12px; border-radius: 50%; background: ${themeData["--text-main"]}; border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 1px 3px rgba(0,0,0,0.6);"></div>
+                            <div style="width: 12px; height: 12px; border-radius: 50%; background: ${themeData["--correct-color"]}; border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 1px 3px rgba(0,0,0,0.6);"></div>
                         </div>
                     `;
                 }
             }
         });
     }
+
+    // --- ONBOARDING LOGIC (SPEECH BUBBLE) ---
+    window.checkOnboarding = async function() {
+        // If they already have a username saved, do nothing!
+        if (prefs.username !== undefined) return;
+
+        // Find the CONTAINER instead of the podium to bypass the Safari bug
+        const container = document.querySelector('.pet-container');
+        if (!container) return;
+
+        // Create the beautiful glass bubble dynamically
+        const bubble = document.createElement('div');
+        bubble.className = 'echo-bubble-container';
+        bubble.innerHTML = `
+            <div class="echo-bubble-text" id="echo-b-text">The cosmos is vast, but you are here.<br><br>What should I call you?</div>
+            <input type="text" id="echo-b-input" class="echo-bubble-input" placeholder="Your name..." autocomplete="off">
+            <div class="echo-bubble-btns" id="echo-b-btns">
+                <button class="btn-ghost" id="echo-b-skip" style="padding: 10px; flex: 1; font-size: 11px;">SKIP</button>
+                <button class="btn-main" id="echo-b-save" style="padding: 10px; flex: 1; font-size: 11px;">SAVE</button>
+            </div>
+        `;
+        container.appendChild(bubble);
+
+        // A tiny delay so the fade-in and slide-up animation triggers gracefully
+        // (Removed the autoplay chime from here to obey browser rules!)
+        setTimeout(() => bubble.classList.add('show'), 600);
+
+        const input = document.getElementById('echo-b-input');
+        const btnSave = document.getElementById('echo-b-save');
+        const btnSkip = document.getElementById('echo-b-skip');
+        const text = document.getElementById('echo-b-text');
+        const btns = document.getElementById('echo-b-btns');
+
+        // Allow pressing "Enter" on the keyboard to save
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') btnSave.click();
+        });
+
+        // What happens when they finish
+        function finishOnboarding(name) {
+            // Hide the input and buttons smoothly
+            input.style.display = 'none';
+            btns.style.display = 'none';
+            
+            // THE FIX: Play the chime now that they have clicked a button!
+            if (window.playCosmicChime) window.playCosmicChime();
+            
+            // Grab the guide's current name!
+            let guideName = prefs.customGuideName || "Echo";
+            
+            // Swap the text to the personal greeting
+            if (name) {
+                text.innerHTML = `Welcome to Astral Affirmations, <strong style="color: var(--correct-color);">${name}</strong>.<br><br>I'm ${guideName}, your guide to help you on this journey.`;
+            } else {
+                text.innerHTML = `It's ok to stay a mystery.<br><br>Welcome to Astral Affirmations. I'm ${guideName}, your guide to help you on this journey.`;
+            }
+
+            // Let them read it for 4.5 seconds, then fade it out and remove it
+            setTimeout(() => {
+                bubble.classList.remove('show');
+                setTimeout(() => bubble.remove(), 500); 
+            }, 4500);
+        }
+
+        btnSave.onclick = () => {
+            let name = input.value.trim();
+            prefs.username = name;
+            save(K_PREFS, prefs);
+            finishOnboarding(name);
+        };
+
+        btnSkip.onclick = () => {
+            prefs.username = ""; 
+            save(K_PREFS, prefs);
+            finishOnboarding("");
+        };
+    };
 
     // --- MASTER UNLOCK LOGIC ---
     window.checkUnlocks = function() {
@@ -1668,11 +1862,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.checkUnlocks(); 
     window.updateList();
+    window.checkOnboarding(); // <--- Triggers the welcome screen if they are new!
 
     // --- GLOBAL WINDOW FUNCTIONS ---
     window.closeGoalOverlay = function() {
         document.getElementById('goal-overlay').classList.remove('show');
         document.body.classList.remove('screen-goal-breathe');
+        
+        // Stops the bounce!
+        const overlayPetImg = document.getElementById('overlay-companion-img');
+        if (overlayPetImg) overlayPetImg.classList.remove('bounce-fast');
     };
 
     window.goHome = function() {
@@ -1683,4 +1882,169 @@ document.addEventListener('DOMContentLoaded', () => {
         showDialog('alert', 'Manage Collection', '• Rename or delete categories using the icons.\n\n• Reorder categories to update the main page.\n\n• Expand a category to manage individual affirmations.', '', 'GOT IT', '');
     };
 
-});
+    // --- GENTLE COSMIC CHIME (ECHO'S VOICE) ---
+    window.playCosmicChime = function() {
+        if (!prefs.soundUI) return; 
+
+        try {
+            if (!audioCtx) {
+                const AudioContextWrapper = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContextWrapper();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine'; 
+            osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); 
+            osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); 
+            
+            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.05); 
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + 0.6);
+        } catch (e) { console.log("Chime failed:", e); }
+    };
+
+    // --- WOOD BLOCK (THE "DOORS") ---
+    window.playWoodBlock = function() {
+        if (prefs.haptics && window.navigator.vibrate) {
+            try { window.navigator.vibrate(25); } catch(e) {}
+        }
+        if (!prefs.soundUI) return;
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime); 
+            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        } catch (e) {}
+    };
+
+    // --- GLASS TAP (THE "INTERACTIONS") ---
+    window.playGlassTap = function() {
+        if (prefs.haptics && window.navigator.vibrate) {
+            try { window.navigator.vibrate(15); } catch(e) {}
+        }
+        if (!prefs.soundUI) return;
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(2000, audioCtx.currentTime); 
+            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+        } catch (e) {}
+    };
+
+    // --- SMART HIERARCHY LISTENER ---
+    document.addEventListener('click', function(e) {
+        // Find the closest interactive element
+        const el = e.target.closest('button, .icon-action-btn, .custom-cb-label, .category-header, .breakdown-header, .dropdown-item, .cat-select-btn, .switch, .snack-undo, #bulk-toggle-btn, #guides-menu-name-btn, #vacation-banner, .legacy-card, .setting-row[onclick], .collection-card');
+        
+        // If not clickable or it's a game bubble, do nothing
+        if (!el || el.classList.contains('bub')) return;
+
+        // THE WOOD LIST: Only "Entry" links
+        // Matches the Lifetime Card and the specific Settings links we identified
+        const isWoodDoor = el.matches('.legacy-card, .setting-row[onclick]');
+
+        if (isWoodDoor) {
+            window.playWoodBlock();
+        } else {
+            // EVERYTHING ELSE: Buttons, Toggles, and "Inside" actions are Glass
+            window.playGlassTap();
+        }
+    });
+
+    // --- REUSABLE GUIDE SPEECH BUBBLE (UPGRADED) ---
+    window.guideSpeak = function(title, message, primaryBtnText = "OKAY", onPrimary = null, secondaryBtnText = null, onSecondary = null) {
+        const container = document.querySelector('.pet-container');
+        if (!container) return;
+
+        // Remove an existing bubble if they click rapidly
+        const existing = document.getElementById('guide-dynamic-bubble');
+        if (existing) existing.remove();
+
+        // Create the beautiful glass bubble dynamically
+        const bubble = document.createElement('div');
+        bubble.id = 'guide-dynamic-bubble';
+        bubble.className = 'echo-bubble-container';
+        
+        let titleHtml = title ? `<div style="font-weight: bold; color: var(--correct-color); margin-bottom: 8px; font-size: 15px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px;">${title}</div>` : '';
+
+        // Dynamically build 1 or 2 buttons!
+        let buttonsHtml = '';
+        if (secondaryBtnText) {
+            buttonsHtml = `
+                <button class="btn-ghost" id="guide-btn-sec" style="flex: 1; padding: 10px; font-size: 11px;">${secondaryBtnText}</button>
+                <button class="btn-main" id="guide-btn-pri" style="flex: 1; padding: 10px; font-size: 11px;">${primaryBtnText}</button>
+            `;
+        } else {
+            buttonsHtml = `
+                <button class="btn-main" id="guide-btn-pri" style="width: 100%; padding: 10px; font-size: 12px;">${primaryBtnText}</button>
+            `;
+        }
+
+        bubble.innerHTML = `
+            ${titleHtml}
+            <div class="echo-bubble-text" style="margin-bottom: 12px;">${message}</div>
+            <div class="echo-bubble-btns">
+                ${buttonsHtml}
+            </div>
+        `;
+        container.appendChild(bubble);
+
+        // Slide it in smoothly
+        setTimeout(() => bubble.classList.add('show'), 50);
+        
+        // Play the gentle chime!
+        if (window.playCosmicChime) window.playCosmicChime();
+
+        // Primary Button Logic
+        const btnPri = bubble.querySelector('#guide-btn-pri');
+        btnPri.onclick = () => {
+            bubble.classList.remove('show');
+            setTimeout(() => bubble.remove(), 500);
+            if (onPrimary) onPrimary(); // Trigger the action!
+        };
+
+        // Secondary Button Logic (if it exists)
+        if (secondaryBtnText) {
+            const btnSec = bubble.querySelector('#guide-btn-sec');
+            btnSec.onclick = () => {
+                bubble.classList.remove('show');
+                setTimeout(() => bubble.remove(), 500);
+                if (onSecondary) onSecondary(); // Trigger the action!
+            };
+        }
+    };
+
+    // --- THE GRAND REVEAL ---
+    // window.addEventListener('load') tells the browser to wait until EVERY image is finished downloading.
+    // Once the images are ready, it triggers the smooth fade-in!
+    window.addEventListener('load', () => {
+        document.body.style.visibility = "visible";
+        document.body.style.opacity = "1";
+    });
+
+}); // <-- DO NOT DELETE THIS CLOSING BRACKET!
