@@ -2119,8 +2119,8 @@
     z-index: 500;
     
     box-shadow: 
-        0 6px 12px rgba(0, 0, 0, 0.6), 
-        0 0 12px color-mix(in srgb, var(--correct-color) 40%, transparent) !important;
+        0 15px 30px rgba(0, 0, 0, 0.3), 
+        0 0 30px color-mix(in srgb, var(--correct-color) 20%, transparent) !important;
     background-clip: padding-box;
 }
 
