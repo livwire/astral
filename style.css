@@ -2095,32 +2095,33 @@
     position: static !important; 
 }
 
-/* 1. THE MAIN BUBBLE */
+/* --- ECHO'S ONBOARDING SPEECH BUBBLE --- */
+
 .echo-bubble-container {
     position: absolute;
     top: calc(100% - 50px); 
     left: 50%;
     transform: translate3d(-50%, -10px, 0); 
-    
     width: calc(100% - 40px); 
     max-width: 320px;
     
-    /* THE FIX: Replaces the hardcoded blue with the theme-aware variable */
-    background: var(--solid-overlay-bg); 
+    /* THE THEME FIX: Uses your existing solid theme background */
+    background: var(--bg-base); 
     
     border: 1px solid var(--border-glass);
     border-top: 2px solid var(--correct-color); 
     border-radius: 20px;
     padding: 22px 20px;
     
+    /* THE SHADOW FIX: */
+    box-shadow: 
+        0 4px 8px rgba(0, 0, 0, 0.5), 
+        0 0 8px color-mix(in srgb, var(--correct-color) 60%, transparent) !important;
+    
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     z-index: 500;
-    
-    box-shadow: 
-        0 15px 30px rgba(0, 0, 0, 0.3), 
-        0 0 30px color-mix(in srgb, var(--correct-color) 20%, transparent) !important;
     background-clip: padding-box;
 }
 
@@ -2130,7 +2131,7 @@
     transform: translate3d(-50%, 15px, 0); 
 }
 
-/* 2. THE TAIL */
+/* THE TAIL FIX */
 .echo-bubble-container::before {
     content: '';
     position: absolute;
@@ -2140,8 +2141,8 @@
     width: 14px;
     height: 14px;
     
-    /* THE FIX: Ensure the tail matches perfectly */
-    background: var(--solid-overlay-bg);
+    /* Matches the theme base */
+    background: var(--bg-base);
     
     border-left: 2px solid var(--correct-color);
     border-top: 2px solid var(--correct-color);
