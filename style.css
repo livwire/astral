@@ -2118,8 +2118,8 @@
     transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     z-index: 500;
     
-    box-shadow: 
-        box-shadow: none !important;
+    /* Prevents harsh mobile edge bleeding */
+    box-shadow: none !important;
     background-clip: padding-box;
 }
 
