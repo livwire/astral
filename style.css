@@ -2106,7 +2106,7 @@
     max-width: 320px;
     
     /* THE FIX: Replaces the hardcoded blue with the theme-aware variable */
-    background: var(--solid-overlay-bg); 
+    background-color: var(--solid-overlay-bg); 
     
     border: 1px solid var(--border-glass);
     border-top: 2px solid var(--correct-color); 
@@ -2119,7 +2119,7 @@
     z-index: 500;
     
     box-shadow: 
-        0 4px 24px 4px var(--shadow-color),
+        0 4px 14px 4px var(--shadow-color),
         0 0 0 1px var(--shadow-color) !important;
 }
 
@@ -2140,7 +2140,7 @@
     height: 14px;
     
     /* THE FIX: Ensure the tail matches perfectly */
-    background: var(--solid-overlay-bg);
+    background-color: var(--solid-overlay-bg);
     
     border-left: 2px solid var(--correct-color);
     border-top: 2px solid var(--correct-color);
