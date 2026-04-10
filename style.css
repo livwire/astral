@@ -2102,7 +2102,7 @@
     left: 50%;
     transform: translate3d(-50%, -10px, 0); 
     
-    width: 90%; 
+    width: 95%; 
     max-width: 320px;
     
     /* THE FIX: Replaces the hardcoded blue with the theme-aware variable */
