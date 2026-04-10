@@ -2118,9 +2118,9 @@
     transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     z-index: 500;
     
-    /* Prevents harsh mobile edge bleeding */
-    box-shadow: none !important;
-    background-clip: padding-box;
+    box-shadow: 
+        0 4px 24px 4px var(--shadow-color),
+        0 0 0 1px var(--shadow-color) !important;
 }
 
 .echo-bubble-container.show {
