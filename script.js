@@ -21,13 +21,13 @@ document.addEventListener('DOMContentLoaded', () => {
         5:  { 
             type: "GUIDE", 
             name: "CUMULUS",
-            visual: `<img src="images/cumulus.png" class="reward-image-preview">`,
+            visual: `<img src="images/guides/cumulus.png" class="reward-image-preview">`,
             actionHtml: `<button class="btn-ghost" onclick="stopSession(); openGuides(); document.getElementById('level-up-overlay').classList.remove('active');">VIEW REWARD</button>`
         },
         10: { 
             type: "THEME", 
             name: "CRYSTALLINE CAVE",
-            visual: `<img src="images/gem-cave.png" class="reward-image-preview">`, 
+            visual: `<img src="images/themes/gem-cave.png" class="reward-image-preview">`, 
             actionHtml: `<button class="btn-ghost" onclick="stopSession(); openThemes(); document.getElementById('level-up-overlay').classList.remove('active');">VIEW REWARD</button>`
         },
         15: { 
@@ -48,20 +48,56 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentCatSelection = null;
     let lastMovedCat = null;
 
-    // --- ECHO / ME OVERLAY LOGIC ---
-    const meButton = document.getElementById('meBtn');
-    const meOverlay = document.getElementById('me-overlay');
-    const closeMeButton = document.getElementById('closeMeBtn');
+    // ==========================================
+    // --- THE NEW VIEW ROUTER ---
+    // ==========================================
+    window.switchView = function(viewId, event) {
+        if (event) {
+            event.stopPropagation();
+            if (window.playGlassTap) window.playGlassTap();
+        }
 
-    if (meButton && meOverlay && closeMeButton) {
-        meButton.addEventListener('click', () => {
-            meOverlay.classList.add('show');
+        // 1. DO THE HEAVY LIFTING FIRST (Update DOM while the view is still hidden)
+        if (viewId === 'home-view') {
+            window.updateList();
+            document.getElementById('bulk-area').style.display = 'none';
+            document.getElementById('bulk-toggle-btn').style.display = 'block';
+            document.getElementById('bulk-in').value = '';
+        } else if (viewId === 'stats-view') {
+            renderStats();
+        } else if (viewId === 'collection-view') {    
+            updateManagerList();
+        } else if (viewId === 'account-view') {
+            window.updateAccountHeader();
+        }
+
+        // 2. NOW SWAP THE VIEWS (Instant snap with the new content fully loaded)
+        document.querySelectorAll('.app-view').forEach(view => {
+            view.classList.remove('active');
         });
 
-        closeMeButton.addEventListener('click', () => {
-            meOverlay.classList.remove('show');
+        const targetView = document.getElementById(viewId);
+        if (targetView) targetView.classList.add('active');
+
+        // 3. UPDATE NAV HIGHLIGHTS
+        document.querySelectorAll('.nav-item').forEach(nav => {
+            nav.classList.remove('active');
         });
-    }
+        
+        const navMap = {
+            'home-view': 'nav-home',
+            'stats-view': 'nav-stats',
+            'collection-view': 'nav-collection',
+            'account-view': 'nav-account'
+        };
+        
+        if (navMap[viewId]) {
+            const activeNav = document.getElementById(navMap[viewId]);
+            if (activeNav) activeNav.classList.add('active');
+        }
+
+        window.closeOverlays();
+    };
 
     // --- CUSTOM DIALOG LOGIC ---
     function showDialog(type, title, message, defaultValue = '', confirmText = 'OK', cancelText = 'Cancel') {
@@ -71,25 +107,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const msgEl = document.getElementById('cd-message');
             const inputEl = document.getElementById('cd-input');
             
-            // NEW: Dynamically generate a multi-line text area if it doesn't exist yet
             let textAreaEl = document.getElementById('cd-textarea');
             if (!textAreaEl) {
                 textAreaEl = document.createElement('textarea');
                 textAreaEl.id = 'cd-textarea';
-                
-                // THE CSS FIX: Copy the exact inline styles (like width: 100%) from the input!
                 textAreaEl.style.cssText = inputEl.style.cssText; 
-                
-                // --- THE MOBILE KEYBOARD FIXES ---
                 textAreaEl.setAttribute('autocomplete', 'nope'); 
                 textAreaEl.setAttribute('autocorrect', 'on');    
                 textAreaEl.setAttribute('spellcheck', 'true');   
-                
-                // --- THE MOBILE & SPACING FIXES ---
                 textAreaEl.style.resize = 'none'; 
                 textAreaEl.style.height = '120px'; 
                 textAreaEl.style.fontFamily = 'inherit';
-                
                 inputEl.parentNode.insertBefore(textAreaEl, inputEl.nextSibling);
             }
 
@@ -98,7 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             titleEl.innerHTML = title;
             
-            // Safely convert new lines to HTML line breaks
             if (message) { 
                 msgEl.innerHTML = String(message).replace(/\n/g, '<br>'); 
                 msgEl.style.display = 'block'; 
@@ -106,7 +133,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 msgEl.style.display = 'none'; 
             }
 
-            // Hide both inputs by default
             let activeInput = inputEl;
             inputEl.style.display = 'none';
             textAreaEl.style.display = 'none';
@@ -139,7 +165,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnConfirm.style.color = '';
             }
 
-            // THE RENDERING FIX: Removed the appendChild line so the browser stops turning the popup invisible!
             overlay.style.setProperty('z-index', '999999', 'important');
             overlay.classList.add('show');
             
@@ -153,21 +178,14 @@ document.addEventListener('DOMContentLoaded', () => {
             btnCancel.onclick = () => { 
                 cleanup(); 
                 resolve(null); 
-                if (title === 'Set Daily Goal') {
-                    document.getElementById('me-overlay').classList.add('show');
-                }
             };
 
             btnConfirm.onclick = () => { 
                 cleanup();
                 resolve(type === 'prompt' ? activeInput.value : true); 
-                if (title === 'Set Daily Goal') {
-                    document.getElementById('me-overlay').classList.add('show');
-                }
             };
             
             activeInput.onkeydown = (e) => { 
-                // Allow Shift+Enter for new lines, but normal Enter auto-saves
                 if (e.key === 'Enter' && !e.shiftKey) { 
                     e.preventDefault();
                     btnConfirm.click(); 
@@ -187,21 +205,18 @@ document.addEventListener('DOMContentLoaded', () => {
         
         msgEl.innerText = msg;
         
-        // Let's dynamically fix the CSS layout dead space!
         const undoBtn = sb.querySelector('[onclick*="triggerUndo"]');
         if (undoBtn) {
             if (stateData) {
-                // Undo state: Show button, spread them out, restore normal width
                 undoBtn.style.display = 'inline-block';
                 sb.style.justifyContent = 'space-between';
-                sb.style.minWidth = ''; // Restores your original CSS default
+                sb.style.minWidth = ''; 
                 msgEl.style.textAlign = 'left';
-                msgEl.style.marginRight = '15px'; // Keeps text from touching the button
+                msgEl.style.marginRight = '15px'; 
             } else {
-                // Alert state: Hide button, shrink the dead space, center the text!
                 undoBtn.style.display = 'none';
                 sb.style.justifyContent = 'center';
-                sb.style.minWidth = 'max-content'; // This shrinks the capsule!
+                sb.style.minWidth = 'max-content'; 
                 msgEl.style.textAlign = 'center';
                 msgEl.style.marginRight = '0px'; 
             }
@@ -289,12 +304,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- PREFS LOADING & ULTIMATE SANITIZER ---
     let prefs = load(K_PREFS);
     if (!prefs || typeof prefs !== 'object') { 
-        prefs = { lightMode: false, zenMode: false, showBackground: true, soundUI: true, soundGame: true, haptics: true, nightOwl: false, lifetimeTotal: 0, bestStreak: 0, skipCredits: 3, lastSkipResetMonth: "", vacationMode: false, lastActiveDate: Date.now(), sortMode: 'Manual', customGuideName: "Echo" };
+        prefs = { lightMode: false, zenMode: false, showBackground: true, soundUI: true, soundGame: true, haptics: true, nightOwl: false, lifetimeTotal: 0, bestStreak: 0, skipCredits: 3, solarCredits: 0, lastSkipResetMonth: "", vacationMode: false, lastActiveDate: Date.now(), sortMode: 'Manual', customGuideName: "Echo" };
     } else {
         if (typeof prefs.lightMode === 'undefined') prefs.lightMode = false;
         if (typeof prefs.zenMode === 'undefined') prefs.zenMode = false;
         if (typeof prefs.showBackground === 'undefined') prefs.showBackground = true;
-        // The Sound Fix:
         if (typeof prefs.soundUI === 'undefined') prefs.soundUI = prefs.sound !== undefined ? prefs.sound : true;
         if (typeof prefs.soundGame === 'undefined') prefs.soundGame = prefs.sound !== undefined ? prefs.sound : true;
         if (typeof prefs.haptics === 'undefined') prefs.haptics = true;
@@ -303,6 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof prefs.lastActiveDate === 'undefined') prefs.lastActiveDate = Date.now();
         if (typeof prefs.sortMode === 'undefined') prefs.sortMode = 'Manual';
         if (typeof prefs.customGuideName === 'undefined') prefs.customGuideName = "Echo";
+        if (typeof prefs.solarCredits === 'undefined') prefs.solarCredits = 0;
     }
 
     let nameCheck = String(prefs.customGuideName);
@@ -400,13 +415,12 @@ document.addEventListener('DOMContentLoaded', () => {
         save(K_SEL, selectedCats);
     }
     
-    // --- THE PRO FIX: Restore Progress on Date Change ---
+    // --- RESTORE PROGRESS ON DATE CHANGE ---
     let todayString = getLogicalDateStr();
     let dailyProgress = load(K_TODAY) || { date: todayString, count: 0 };
     
     if (dailyProgress.date !== todayString) { 
         let recoveredCount = 0;
-        // Check if we already have progress saved for this logical day
         if (historyMap[todayString]) {
             recoveredCount = historyMap[todayString].c !== undefined ? historyMap[todayString].c : (typeof historyMap[todayString] === 'number' ? historyMap[todayString] : 0);
         }
@@ -426,6 +440,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const sText = document.getElementById('skips-remaining-text');
     if (sText) sText.innerText = prefs.skipCredits !== undefined ? prefs.skipCredits : 3;
+    const solText = document.getElementById('solar-remaining-text');
+    if (solText) solText.innerText = prefs.solarCredits !== undefined ? prefs.solarCredits : 0;
     
     applyZenModeUI();
     applyBackgroundUI();
@@ -450,13 +466,12 @@ document.addEventListener('DOMContentLoaded', () => {
         save(K_HISTORY, historyMap);
     }
 
-    // --- NEW VACATION MODE RETURN PROMPT ---
+    // --- VACATION MODE RETURN PROMPT ---
     function checkVacationStatus() {
         if (!prefs.vacationMode) return; 
 
         let today = getLogicalDateStr();
 
-        // If the current logical day is DIFFERENT from the day they started vacation...
         if (prefs.vacationDate && prefs.vacationDate !== today) {
             
             let guideName = prefs.customGuideName || "Echo";
@@ -466,14 +481,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 `I see you're in vacation mode. Are you ready to resume your practice with me?`, 
                 "RESUME", 
                 () => {
-                    // Turn off vacation mode and hide the banner!
                     prefs.vacationMode = false;
                     save(K_PREFS, prefs);
                     applyVacationUI();
                 },
                 "NOT YET", 
                 () => {
-                    // Update the vacation date to TODAY so we don't bother them again until tomorrow!
                     prefs.vacationDate = today;
                     save(K_PREFS, prefs);
                 }
@@ -500,13 +513,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (prefs.vacationMode) {
             prefs.lastActiveDate = Date.now();
-            prefs.vacationDate = dStr; // <--- ADDED THIS LINE!
+            prefs.vacationDate = dStr; 
             if (!historyMap[dStr]) historyMap[dStr] = { c: 0, g: dailyGoal };
             if (typeof historyMap[dStr] === 'number') historyMap[dStr] = { c: historyMap[dStr], g: dailyGoal };
             historyMap[dStr].v = true;
             save(K_HISTORY, historyMap);
         } else {
-            // --- THE FIX: Erase the free pass if they turn it off! ---
             if (historyMap[dStr] && typeof historyMap[dStr] === 'object') {
                 historyMap[dStr].v = false;
                 save(K_HISTORY, historyMap);
@@ -546,7 +558,6 @@ document.addEventListener('DOMContentLoaded', () => {
         applyBackgroundUI(); 
     }
 
-    // THE FIX: Two new functions to replace the single toggleSound
     window.toggleUISound = function() { prefs.soundUI = document.getElementById('sound-ui-toggle').checked; save(K_PREFS, prefs); }
     window.toggleGameSound = function() { prefs.soundGame = document.getElementById('sound-game-toggle').checked; save(K_PREFS, prefs); }
 
@@ -558,7 +569,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (dailyProgress.date !== todayString) {
             let recoveredCount = 0;
-            // Catch the progress instead of resetting to 0
             if (historyMap[todayString]) {
                 recoveredCount = historyMap[todayString].c !== undefined ? historyMap[todayString].c : (typeof historyMap[todayString] === 'number' ? historyMap[todayString] : 0);
             }
@@ -594,7 +604,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        const confirmed = await showDialog('confirm', 'Apply Silver Shield?', `Use one shield to save yesterday's streak?\nShields remaining: ${prefs.skipCredits}`, '', 'APPLY');
+        const confirmed = await showDialog('confirm', 'Apply Lunar Shield?', `Use one shield to save yesterday's streak?\nShields remaining: ${prefs.skipCredits}`, '', 'APPLY');
         if (confirmed) {
             prefs.skipCredits--;
             save(K_PREFS, prefs);
@@ -606,14 +616,121 @@ document.addEventListener('DOMContentLoaded', () => {
             historyMap[yStr].s = true; 
             save(K_HISTORY, historyMap);
             
-            // NEW LOGIC: Gives them the option to jump straight to the Calendar!
             const viewCal = await showDialog('confirm', 'Streak Protected', 'One shield used. Your calendar has been updated!', '', 'VIEW CALENDAR', 'OK');
             if (viewCal) {
                 closeOverlays();
-                openStats();
+                switchView('stats-view');
             }
         }
     }
+
+    // --- SOLAR SHIELD CALENDAR LOGIC ---
+    window.openSolarCalendar = function() {
+        if(window.playGlassTap) window.playGlassTap();
+        
+        let solarCredits = prefs.solarCredits || 0;
+        if (solarCredits <= 0) {
+            showDialog('confirm', 'Out of Solar Shields', 'You do not have any Solar Shields in your inventory right now.', '', 'GOT IT', '');
+            return;
+        }
+
+        renderSolarCalendar();
+        document.getElementById('solar-calendar-overlay').classList.add('show');
+    };
+
+    window.closeSolarCalendar = function() {
+        if(window.playGlassTap) window.playGlassTap();
+        document.getElementById('solar-calendar-overlay').classList.remove('show');
+    };
+
+    window.renderSolarCalendar = function() {
+        const calContainer = document.getElementById('solar-calendar-container'); 
+        calContainer.innerHTML = '';
+        
+        let todayCal = getLogicalDate(); 
+        todayCal.setHours(23, 59, 59, 999); 
+        
+        let loopCalDate = new Date(todayCal.getFullYear(), todayCal.getMonth() - 2, 1);
+        
+        let html = '';
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        
+        while(loopCalDate <= todayCal || (loopCalDate.getMonth() === todayCal.getMonth() && loopCalDate.getFullYear() === todayCal.getFullYear())) {
+            let y = loopCalDate.getFullYear();
+            let m = loopCalDate.getMonth();
+            html += `<div class="month-block"><div class="month-name">${monthNames[m]} ${y}</div><div class="day-label-grid"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div><div class="month-grid">`;
+            
+            let firstDayOfWeek = new Date(y, m, 1).getDay();
+            let daysInMonth = new Date(y, m + 1, 0).getDate();
+            
+            for(let i=0; i<firstDayOfWeek; i++) { html += `<div class="cal-day empty"></div>`; }
+            
+            for(let day=1; day<=daysInMonth; day++) {
+                let loopD = new Date(y, m, day);
+                if (loopD > todayCal) { html += `<div class="cal-day empty"></div>`; continue; }
+                
+                let dateStr = loopD.toDateString();
+                let isoDateStr = `${y}-${m+1}-${day}`; 
+                
+                let val = historyMap[dateStr];
+                let count = typeof val === 'object' ? (val.c || 0) : (typeof val === 'number' ? val : 0);
+                let g = typeof val === 'object' ? (val.g || dailyGoal) : dailyGoal;
+                let isSkip = typeof val === 'object' ? val.s : false; 
+                let isVacation = typeof val === 'object' ? val.v : false;
+                
+                let dayClass = '';
+                let isMet = false;
+                
+                if (count >= g && g > 0) { dayClass = 'met'; isMet = true; } 
+                else if (isSkip || (isVacation && count < g)) { dayClass = 'skip'; isMet = true; } 
+                else if (count >= (g / 2) && count > 0) { dayClass = 'half'; } 
+                
+                let clickLogic = isMet ? `onclick="showDialog('confirm', 'Path Intact', 'Your streak for this day is already complete. No shield needed!', '', 'GOT IT', '')"` : `onclick="applySolarShield('${isoDateStr}')"`;
+                let styleLogic = isMet ? `opacity: 0.5;` : `cursor: pointer; border: 1px solid rgba(229, 178, 93, 0.4); box-shadow: inset 0 0 10px rgba(229, 178, 93, 0.1); transition: all 0.2s;`;
+                
+                html += `<div class="cal-day ${dayClass}" style="${styleLogic}" ${clickLogic}>${day}</div>`;
+            }
+            html += `</div></div>`; 
+            loopCalDate.setMonth(loopCalDate.getMonth() + 1);
+        }
+        calContainer.innerHTML = html; 
+        
+        setTimeout(() => { calContainer.scrollLeft = calContainer.scrollWidth; }, 10);
+    }
+
+    window.applySolarShield = async function(dateString) {
+        if(window.playGlassTap) window.playGlassTap();
+        
+        let [y, m, d] = dateString.split('-');
+        let targetDate = new Date(y, m - 1, d);
+        let tStr = targetDate.toDateString();
+
+        let solarCredits = prefs.solarCredits || 0;
+
+        const confirmed = await showDialog('confirm', 'Apply Solar Shield?', `Use the sun's warmth to mend the path for:\n\n${targetDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}?\n\nShields remaining: ${solarCredits}`, '', 'APPLY');
+        
+        if (confirmed) {
+            prefs.solarCredits = solarCredits - 1;
+            save(K_PREFS, prefs);
+            const solText = document.getElementById('solar-remaining-text');
+            if (solText) solText.innerText = prefs.solarCredits;
+            
+            if (!historyMap[tStr]) historyMap[tStr] = { c: 0, g: dailyGoal };
+            if (typeof historyMap[tStr] === 'number') historyMap[tStr] = { c: historyMap[tStr], g: dailyGoal };
+            
+            historyMap[tStr].s = true; 
+            save(K_HISTORY, historyMap);
+            
+            closeSolarCalendar();
+            
+            const viewCal = await showDialog('confirm', 'Path Mended', 'One Solar Shield used. The warmth has sealed the rift in your calendar.', '', 'VIEW CALENDAR', 'OK');
+            if (viewCal) {
+                closeOverlays();
+                switchView('stats-view');
+            }
+        }
+    };
+
 
     window.toggleAllBreakdowns = function() {
         const btnText = document.querySelector('#toggle-all-breakdown-btn span');
@@ -628,7 +745,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 c.classList.remove('show');
             }
             
-            // THE FIX: Sync all the individual arrows to match the "Expand All" state!
             const poly = c.previousElementSibling.querySelector('polyline');
             if (poly) {
                 poly.setAttribute('points', isExpanding ? '18 15 12 9 6 15' : '6 9 12 15 18 9');
@@ -737,11 +853,12 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('haptics-toggle').checked = !!prefs.haptics;
             document.getElementById('nightowl-toggle').checked = !!prefs.nightOwl;
             document.getElementById('skips-remaining-text').innerText = prefs.skipCredits !== undefined ? prefs.skipCredits : 3;
+            document.getElementById('solar-remaining-text').innerText = prefs.solarCredits !== undefined ? prefs.solarCredits : 0;
 
             applyZenModeUI(); applyBackgroundUI(); applyVacationUI();
             
             closeDataOverlay();
-            updateManagerList(); window.updateList(); window.updateProgressUI();
+            updateManagerList(); window.updateList(); window.updateProgressUI(); window.updateAccountHeader();
             
             await showDialog('confirm', 'Success!', 'Your data has been perfectly restored.', '', 'OK');
             
@@ -761,35 +878,34 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('vacation-toggle').checked = !!prefs.vacationMode;
         document.getElementById('bg-toggle').checked = !!prefs.showBackground;
         
-        // THE FIX: Assign the two sound toggles safely
         if (document.getElementById('sound-ui-toggle')) document.getElementById('sound-ui-toggle').checked = !!prefs.soundUI;
         if (document.getElementById('sound-game-toggle')) document.getElementById('sound-game-toggle').checked = !!prefs.soundGame;
 
         document.getElementById('haptics-toggle').checked = !!prefs.haptics;
         document.getElementById('nightowl-toggle').checked = !!prefs.nightOwl;
+        
+        const solText = document.getElementById('solar-remaining-text');
+        if (solText) solText.innerText = prefs.solarCredits !== undefined ? prefs.solarCredits : 0;
+        
         document.getElementById('settings-overlay').classList.add('show');
     };
     
-    window.openStats = () => { renderStats(); document.getElementById('stats-overlay').classList.add('show'); };
-    window.openManager = () => { updateManagerList(); document.getElementById('manage-overlay').classList.add('show'); };
+    // Centralized overlay closer (does not affect Views!)
     window.closeOverlays = () => { document.querySelectorAll('.glass-overlay').forEach(el => el.classList.remove('show')); };
     
+    // FIX 2: Restoring the missing Manager open/close functions
+    window.openManager = () => { 
+        updateManagerList(); 
+        document.getElementById('manage-overlay').classList.add('show'); 
+    };
     window.closeManager = () => { 
         document.getElementById('manage-overlay').classList.remove('show'); 
-        
-        // --- NEW: Reset the Bulk Upload UI ---
-        document.getElementById('bulk-area').style.display = 'none';
-        document.getElementById('bulk-toggle-btn').style.display = 'block';
-        document.getElementById('bulk-in').value = ''; // Clears the text box too!
-        
-        window.updateList(); 
-        document.getElementById('me-overlay').classList.add('show');
     };
+
     window.openBreakdown = () => { 
         renderBreakdown(); 
         document.getElementById('breakdown-overlay').classList.add('show'); 
         
-        // THE FIX: Reset the Expand All button back to its default state every time you open the menu!
         const btnText = document.querySelector('#toggle-all-breakdown-btn span');
         const btnIcon = document.getElementById('expand-all-icon');
         if (btnText) btnText.innerText = 'EXPAND ALL';
@@ -797,6 +913,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     window.closeBreakdown = () => { document.getElementById('breakdown-overlay').classList.remove('show'); };
     
+    // Guides & Themes remain inside the Account View as popups
     window.openGuides = () => { 
         document.querySelectorAll('.guide-card').forEach(c => c.classList.remove('active-selection'));
         const currentUrl = prefs.activeGuideUrl || '';
@@ -806,8 +923,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.getElementById('guides-overlay').classList.add('show'); 
     };
-    
-    window.closeGuides = () => { document.getElementById('guides-overlay').classList.remove('show'); document.getElementById('me-overlay').classList.add('show'); };
+    window.closeGuides = () => { document.getElementById('guides-overlay').classList.remove('show'); };
     
     window.openThemes = () => { 
         document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active-selection'));
@@ -817,7 +933,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.getElementById('themes-overlay').classList.add('show'); 
     };
-    window.closeThemes = () => { document.getElementById('themes-overlay').classList.remove('show'); document.getElementById('me-overlay').classList.add('show'); };
+    window.closeThemes = () => { document.getElementById('themes-overlay').classList.remove('show'); };
 
     function renderBreakdown() {
         let currentD = getLogicalDate(); currentD.setHours(0,0,0,0);
@@ -836,7 +952,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             let rawPace = catTotal / catDaysDiff; let catPace = rawPace % 1 === 0 ? rawPace : parseFloat(rawPace.toFixed(1));
             
-            // THE FIX: The onclick now toggles the 'show' class AND manually flips the SVG points up or down!
             html += `<div class="breakdown-card"><div class="breakdown-header" onclick="const content = this.nextElementSibling; const isShowing = content.classList.toggle('show'); const poly = this.querySelector('polyline'); if(poly) poly.setAttribute('points', isShowing ? '18 15 12 9 6 15' : '6 9 12 15 18 9');"><span>${cat}</span><span class="breakdown-total">${catTotal.toLocaleString()} <span style="opacity:0.5; display: flex; align-items: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span></span></div><div class="breakdown-content"><div style="font-size: 11px; color: var(--text-muted); margin-top: 8px; margin-bottom: 12px; font-style: italic; text-align: center; border-bottom: 1px solid var(--border-glass); padding-bottom: 10px;">You're averaging <span style="color: var(--correct-color); font-weight: bold;">${catPace}</span> <strong>${cat}</strong> affirmations a day!</div>`;
             catPhrases.sort((a,b) => (b.lifetimeCount||0) - (a.lifetimeCount||0)).forEach(p => { html += `<div class="breakdown-item"><span class="b-text">${p.text}</span><span class="b-count">${(p.lifetimeCount||0).toLocaleString()}</span></div>`; });
             html += `</div></div>`;
@@ -977,7 +1092,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch(e){} 
     }
     
-    // THE FIX: Game sounds use prefs.soundGame
     function playTone(freq, type, duration, startTime=0, vol=0.1) { if(!audioCtx || !prefs.soundGame) return;
         const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime + startTime); gain.gain.setValueAtTime(vol, audioCtx.currentTime + startTime);
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + startTime + duration); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(audioCtx.currentTime + startTime); osc.stop(audioCtx.currentTime + startTime + duration);
@@ -1051,7 +1165,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateManagerList(); window.updateList();
                 inputEl.value = '';
                 
-                // --- FIXED: The snackbar is now in the right place! ---
                 showSnackbar('Category created!', null);
             } else {
                 await showDialog('confirm', 'Oops!', 'A category with this name already exists. Please pick a new one.', '', 'GOT IT', '');
@@ -1061,7 +1174,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.editFolder = async function(oldName, event) {
         event.stopPropagation();
-        if(window.playGlassTap) window.playGlassTap(); // THE AUDIO FIX!
+        if(window.playGlassTap) window.playGlassTap(); 
         const newNameRaw = await showDialog('prompt', 'Rename Category', 'Enter new name for this Category:', oldName, 'SAVE');
         if (newNameRaw && newNameRaw.trim()) {
             const cleanName = toTitleCase(newNameRaw.trim());
@@ -1108,7 +1221,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.deleteFolder = function(cat, event) {
         event.stopPropagation();
-        if(window.playGlassTap) window.playGlassTap(); // THE AUDIO FIX!
+        if(window.playGlassTap) window.playGlassTap(); 
         let catPhrases = phrases.filter(p => p.category === cat);
         let catIndex = categories.indexOf(cat);
         
@@ -1136,13 +1249,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.toggleCat = function(cat, isChecked, event) {
         event.stopPropagation();
-        if(window.playGlassTap) window.playGlassTap(); // THE AUDIO FIX!
+        if(window.playGlassTap) window.playGlassTap(); 
         if(isChecked) { if(!selectedCats.includes(cat)) selectedCats.push(cat); } else { selectedCats = selectedCats.filter(c => c !== cat); }
         save(K_SEL, selectedCats); window.updateList();
     }
     
     window.toggleAllFocuses = function(event) {
-        if(window.playGlassTap) window.playGlassTap(); // THE AUDIO FIX!
+        if(window.playGlassTap) window.playGlassTap(); 
         const isChecked = event.target.checked;
         if (isChecked) { selectedCats = [...categories]; } else { selectedCats = []; }
         save(K_SEL, selectedCats); window.updateList();
@@ -1153,7 +1266,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.moveCat = function(cat, dir, event) {
         event.stopPropagation();
-        if(window.playGlassTap) window.playGlassTap(); // THE AUDIO FIX!
+        if(window.playGlassTap) window.playGlassTap(); 
         let idx = categories.indexOf(cat);
         if (idx < 0) return;
         let newIdx = idx + dir;
@@ -1186,11 +1299,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectAllCb = document.getElementById('select-all-checkbox');
         if (selectAllCb) { selectAllCb.checked = (categories.length > 0 && selectedCats.length === categories.length); }
         
-        // --- NEW: THE MAIN PAGE EMPTY STATE ---
         if (categories.length === 0) {
-            c.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:14px; padding: 20px; font-style: italic; line-height: 1.6;">Your journey begins here.<br><br>Go to <strong>Account > Manage Affirmations</strong> to create your first category.</div>`;
+            c.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:14px; padding: 20px; font-style: italic; line-height: 1.6;">Your journey begins here.<br><br>Go to <strong>Manage</strong> to create your first category.</div>`;
             save(K_DB, phrases); window.updateProgressUI(); 
-            return; // Stop running the rest of the function!
+            return; 
         }
 
         let html = '';
@@ -1226,11 +1338,10 @@ document.addEventListener('DOMContentLoaded', () => {
             catBtn.innerText = currentCatSelection || "No Categories"; 
         }
 
-        // --- NEW: THE MANAGE PAGE EMPTY STATE ---
         if (categories.length === 0) {
             c.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:14px; padding: 20px; font-style: italic; line-height: 1.6;">Your collection is empty.<br><br>Use the tools above to create your first category!</div>`;
             lastMovedCat = null; 
-            return; // Stop running the rest of the function!
+            return;
         }
 
         let html = '';
@@ -1281,8 +1392,6 @@ document.addEventListener('DOMContentLoaded', () => {
             i.value='';
             expandedFocusesManage[cat] = true; 
             updateManagerList(); window.updateList(); 
-            
-            // --- FIXED: Only the Affirmation message triggers here ---
             showSnackbar('Affirmation added!', null); 
         } 
     }
@@ -1291,7 +1400,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let p = phrases.find(p => p.id === id);
         if(!p) return;
         
-        // CHANGED: "Edit Phrase" is now "Edit Affirmation"
         const newText = await showDialog('prompt', 'Edit Affirmation', '', p.text, 'SAVE');
         
         if(newText && newText.trim()) {
@@ -1306,7 +1414,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(!cat) { await showDialog('confirm', 'Error', 'Please create a Category first.', '', 'OK'); return; }
         
         const lines = document.getElementById('bulk-in').value.split('\n');
-        let addedCount = 0; // Keep track of how many we actually added
+        let addedCount = 0; 
         
         lines.forEach(l => { 
             if(l.trim()) {
@@ -1319,7 +1427,6 @@ document.addEventListener('DOMContentLoaded', () => {
         expandedFocusesManage[cat] = true; 
         updateManagerList(); window.updateList();
         
-        // --- NEW: SHOW DYNAMIC SUCCESS MESSAGE ---
         if (addedCount > 0) {
             showSnackbar(`${addedCount} affirmations imported!`, null);
         }
@@ -1341,7 +1448,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showSnackbar('Phrase deleted', state);
     }
 
-    // --- RESET ALL DATA (THE ONLY COPY!) ---
     window.resetAll = async function() {
         const confirmed = await showDialog('confirm', 'Reset All Data', 'Permanently erase all data? This action cannot be undone.', '', 'RESET');
         if (confirmed) {
@@ -1355,14 +1461,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const activePhrases = phrases.filter(p => selectedCats.includes(p.category));
         
         if(activePhrases.length === 0) { 
-            // THE FIX: Now includes the header title as the first parameter!
             window.guideSpeak("No Affirmations Selected", "Please select at least one category to begin our session.", "GOT IT");
             return; 
         }
         
         let newTodayStr = getLogicalDateStr();
         if (dailyProgress.date !== newTodayStr) { dailyProgress = { date: newTodayStr, count: 0 }; save(K_TODAY, dailyProgress); phrases.forEach(ph => ph.count = 0); save(K_DB, phrases); window.updateProgressUI(); document.getElementById('game-progress-fill').classList.remove('progress-dimmed'); } else if (dailyProgress.count >= dailyGoal) { document.getElementById('game-progress-fill').classList.add('progress-dimmed'); } else { document.getElementById('game-progress-fill').classList.remove('progress-dimmed'); }
-        window.updateGameProgressUI(); initAudio(); document.getElementById('lib').style.display = 'none'; document.getElementById('game').style.display = 'flex'; document.body.classList.add('game-active');
+        window.updateGameProgressUI(); initAudio(); 
+        
+        // FIX 3: Replaced 'lib' with '.app-container' to reflect your new HTML structure
+        const appContainer = document.querySelector('.app-container');
+        if(appContainer) appContainer.style.display = 'none';
+        
+        document.getElementById('game').style.display = 'flex'; 
+        
+        document.body.classList.add('game-active');
+        
+        // *** NEW FIX: Hide the navigation bar during gameplay ***
+        const navBar = document.querySelector('.bottom-nav') || document.querySelector('nav') || document.querySelector('.floating-nav');
+        if (navBar) navBar.style.display = 'none';
+        
         if (activeState && activePhrases.find(p => p.id === activeState.phraseId)) { 
             activeState.charIdx = 0; 
             save(K_STATE, activeState); 
@@ -1374,14 +1492,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     window.stopSession = function() { 
-        document.getElementById('lib').style.display = 'flex'; 
+        // FIX 4: Replaced 'lib' with '.app-container' to reflect your new HTML structure
+        const appContainer = document.querySelector('.app-container');
+        if(appContainer) appContainer.style.display = 'block';
+        
         document.getElementById('game').style.display = 'none'; 
         document.body.classList.remove('screen-goal-breathe'); 
+        
         document.body.classList.remove('game-active'); 
+        
+        // *** NEW FIX: Bring the navigation bar back when gameplay ends ***
+        const navBar = document.querySelector('.bottom-nav') || document.querySelector('nav') || document.querySelector('.floating-nav');
+        if (navBar) navBar.style.display = 'flex';
+        
         document.getElementById('goal-overlay').classList.remove('show'); 
         document.getElementById('level-up-overlay').classList.remove('active'); 
         
-        // Stops the bounce if they leave the screen!
         const overlayPetImg = document.getElementById('overlay-companion-img');
         if (overlayPetImg) overlayPetImg.classList.remove('bounce-fast');
         
@@ -1392,7 +1518,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('goal-overlay').classList.remove('show'); 
         document.body.classList.remove('screen-goal-breathe'); 
         
-        // Stops the bounce!
         const overlayPetImg = document.getElementById('overlay-companion-img');
         if (overlayPetImg) overlayPetImg.classList.remove('bounce-fast');
         
@@ -1411,19 +1536,18 @@ document.addEventListener('DOMContentLoaded', () => {
         nextRound();
     }
 
-    // --- GOAL MESSAGES DECK LOGIC ---
     const GOAL_MESSAGES = [
         "The stars have aligned. You've completed your daily practice.",
-        "Your inner light is beaming and growing brighter each day.",
-        "The path is unfolding right beneath your feet.",
-        "{NAME}, your energy is unmatched today. Beautifully done.",
-        "You are the architect of your life.",
-        "Energy shifted. Intentions set. Dreams ignited.",
-        "You are a magnet for everything you desire.",
-        "You've found your center among the stars.",
-        "You've honored your intentions today, and the universe takes notice.",
+        "Keep that glow, {NAME}. You're building serious momentum.",
+        "Your path is unfolding beautifully. You're exactly where you need to be.",
+        "{NAME}, you really showed up today. Well done.",
+        "Every day counts, {NAME}. Be proud of your accomplishments.",
+        "Intentions set. Energy shifted. You're all set for today.",
+        "Things are falling into place, {NAME}. Just keep doing what you're doing.",
+        "You've found your center among the stars, {NAME}.",
+        "You've honored your intentions today, and that's a huge win.",
         "Every affirmation is a testament to your growth.",
-        "Another step forward on your journey. I am proud to guide you.",
+        "Another step forward on your journey. I'm proud to be navigating this with you.",
         "Take a deep breath, {NAME}. You did wonderfully today."
     ];
 
@@ -1527,7 +1651,6 @@ document.addEventListener('DOMContentLoaded', () => {
             activeState = null; save(K_STATE, null); save(K_DB, phrases);
             const txtOut = document.getElementById('text-out'); txtOut.classList.add('text-win-cyan'); txtOut.innerHTML = p;
             
-            // --- THE NEW CLEAN LEVEL-UP LOGIC ---
             if (justLeveledUp && !prefs.zenMode) {
                 soundRankUp();
                 vibrateDevice('rank');
@@ -1590,10 +1713,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (mainPetImg && overlayPetImg) {
                     overlayPetImg.src = mainPetImg.src;
-                    overlayPetImg.classList.add('bounce-fast'); // <--- ADDED CELEBRATION BOUNCE!
+                    overlayPetImg.classList.add('bounce-fast');
                 }
 
-                // <--- PULLS A RANDOM MESSAGE FROM THE DECK!
                 const subtitle = document.querySelector('#goal-overlay .goal-subtitle');
                 if (subtitle) {
                     subtitle.innerText = getGoalMessage();
@@ -1619,32 +1741,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- SMART GUIDE EQUIPMENT LOGIC ---
     window.equipGuide = function(guideName, element) {
-        // 1. Is it locked?
         if (element.classList.contains('locked')) {
             const reqLevel = element.getAttribute('data-unlock-level');
             showDialog('alert', 'Guide Locked', `You must reach Level ${reqLevel} to unlock ${guideName}. Keep up your daily practice!`, '', 'GOT IT', '');
             return; 
         }
 
-        // 2. SMART GRAB: Get the image source directly from the HTML card!
         const clickedImg = element.querySelector('.collection-img');
         if (clickedImg) {
             prefs.activeGuideUrl = clickedImg.src;
         }
 
-        // 3. Save to your local storage
         prefs.activeGuide = guideName;
         save(K_PREFS, prefs);
 
-        // 4. Move the glowing selection border
         document.querySelectorAll('.guide-card').forEach(c => c.classList.remove('active-selection'));
         element.classList.add('active-selection');
 
-        // 5. Update the companion on the main page!
         const mainImg = document.getElementById('companion-image-display');
         const mainName = document.getElementById('companion-name-display');
         
-        // FIX: Add "Guide: " in front of the custom name!
         if (mainName) mainName.innerText = `Guide: ${prefs.customGuideName}`;
         
         if (mainImg && prefs.activeGuideUrl) {
@@ -1653,14 +1769,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.equipTheme = function(themeName, cardElement) {
-        // 1. Check if the theme is locked first!
         if (cardElement && cardElement.classList.contains('locked')) {
             const reqLevel = cardElement.getAttribute('data-unlock-level');
             showDialog('alert', 'Theme Locked', `You must reach Level ${reqLevel} to unlock ${themeName}. Keep up your daily practice!`, '', 'GOT IT', '');
             return; 
         }
 
-        // 2. If unlocked, apply it!
         if (typeof applyThemeVariables === 'function') {
             applyThemeVariables(themeName);
         }
@@ -1668,7 +1782,6 @@ document.addEventListener('DOMContentLoaded', () => {
         prefs.activeTheme = themeName;
         save(K_PREFS, prefs);
 
-        // 3. Move the glowing selection border
         document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active-selection'));
         if(cardElement) {
             cardElement.classList.add('active-selection');
@@ -1687,20 +1800,17 @@ document.addEventListener('DOMContentLoaded', () => {
             let cleanName = newName.trim();
             if (cleanName.length > 14) cleanName = cleanName.substring(0, 14);
             
-            // --- THE INVISIBLE FENCE (Letters, Numbers, Spaces, Hyphens ONLY) ---
             const isSafeName = /^[a-zA-Z0-9\s\-]+$/.test(cleanName);
 
             if (!isSafeName) {
                 showDialog('alert', 'Oops!', 'Please use only letters, numbers, spaces, and hyphens for your guide\'s name.', '', 'TRY AGAIN');
-                return; // Stops them from saving weird symbols or emojis!
+                return; 
             }
-            // --------------------------------------------------------------------
 
             prefs.customGuideName = cleanName;
             save(K_PREFS, prefs);
             
             const mainName = document.getElementById('companion-name-display');
-            // FIX: Add "Guide: " after renaming!
             if(mainName) mainName.innerText = `Guide: ${prefs.customGuideName}`;
             
             const menuNameBtn = document.getElementById('guides-menu-name-btn');
@@ -1708,7 +1818,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- INITIALIZE COMPANION ON LOAD ---
     const mainImg = document.getElementById('companion-image-display');
     const mainName = document.getElementById('companion-name-display'); 
     const menuNameBtn = document.getElementById('guides-menu-name-btn'); 
@@ -1722,14 +1831,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // FIX: Add "Guide: " when the app boots up!
     if(mainName) mainName.innerText = `Guide: ${prefs.customGuideName}`;
     
     if(menuNameBtn) {
         menuNameBtn.innerHTML = `${prefs.customGuideName} <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
     }
 
-    // --- AUTO-PAINT THEME CARDS ---
     if (typeof APP_THEMES !== 'undefined') {
         document.querySelectorAll('.theme-card').forEach(card => {
             const themeName = card.getAttribute('data-theme-name');
@@ -1743,7 +1850,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     previewDiv.style.backgroundPosition = "center";
                     previewDiv.style.borderRadius = "8px";
 
-                    // --- NEW BLOCK: NO GRAY PILL, ORIGINAL SIZED DOTS ---
                     previewDiv.innerHTML = `
                         <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px;">
                             <div style="width: 12px; height: 12px; border-radius: 50%; background: ${themeData["--bg-base"]}; border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 1px 3px rgba(0,0,0,0.6);"></div>
@@ -1756,16 +1862,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- ONBOARDING LOGIC (SPEECH BUBBLE) ---
     window.checkOnboarding = async function() {
-        // If they already have a username saved, do nothing!
         if (prefs.username !== undefined) return;
 
-        // Find the CONTAINER instead of the podium to bypass the Safari bug
         const container = document.querySelector('.pet-container');
         if (!container) return;
 
-        // Create the beautiful glass bubble dynamically
         const bubble = document.createElement('div');
         bubble.className = 'echo-bubble-container';
         bubble.innerHTML = `
@@ -1778,8 +1880,6 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         container.appendChild(bubble);
 
-        // A tiny delay so the fade-in and slide-up animation triggers gracefully
-        // (Removed the autoplay chime from here to obey browser rules!)
         setTimeout(() => bubble.classList.add('show'), 600);
 
         const input = document.getElementById('echo-b-input');
@@ -1788,31 +1888,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = document.getElementById('echo-b-text');
         const btns = document.getElementById('echo-b-btns');
 
-        // Allow pressing "Enter" on the keyboard to save
         input.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') btnSave.click();
         });
 
-        // What happens when they finish
         function finishOnboarding(name) {
-            // Hide the input and buttons smoothly
             input.style.display = 'none';
             btns.style.display = 'none';
             
-            // THE FIX: Play the chime now that they have clicked a button!
             if (window.playCosmicChime) window.playCosmicChime();
             
-            // Grab the guide's current name!
             let guideName = prefs.customGuideName || "Echo";
             
-            // Swap the text to the personal greeting
             if (name) {
                 text.innerHTML = `Welcome to Astral Affirmations, <strong style="color: var(--correct-color);">${name}</strong>.<br><br>I'm ${guideName}, your guide to help you on this journey.`;
             } else {
                 text.innerHTML = `It's ok to stay a mystery.<br><br>Welcome to Astral Affirmations. I'm ${guideName}, your guide to help you on this journey.`;
             }
 
-            // Let them read it for 4.5 seconds, then fade it out and remove it
             setTimeout(() => {
                 bubble.classList.remove('show');
                 setTimeout(() => bubble.remove(), 500); 
@@ -1833,7 +1926,221 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     };
 
-    // --- MASTER UNLOCK LOGIC ---
+    window.editUsername = async function() {
+        if(window.playGlassTap) window.playGlassTap();
+        
+        const currentName = prefs.username || "";
+        const newName = await showDialog('prompt', 'Edit Name', '(Max 14 characters)', currentName, 'SAVE');
+        
+        if (newName !== null) { 
+            let cleanName = newName.trim();
+            
+            if (cleanName !== "") {
+                if (cleanName.length > 14) cleanName = cleanName.substring(0, 14);
+                
+                const isSafeName = /^[a-zA-Z0-9\s\-]+$/.test(cleanName);
+
+                if (!isSafeName) {
+                    showDialog('alert', 'Oops!', 'Please use only letters, numbers, spaces, and hyphens for your name.', '', 'TRY AGAIN');
+                    return; 
+                }
+            }
+            
+            prefs.username = cleanName;
+            save(K_PREFS, prefs);
+            window.updateAccountHeader();
+            
+            if (typeof showSnackbar === 'function') {
+                showSnackbar('Name updated successfully!', null);
+            }
+        }
+    };
+
+    window.updateAccountHeader = function() {
+        const nameDisplay = document.getElementById('account-username-display');
+        const levelDisplay = document.getElementById('account-level-display');
+        
+        if (nameDisplay) {
+            nameDisplay.innerText = (prefs.username && prefs.username.trim() !== "") ? prefs.username : "Stargazer";
+        }
+        
+        if (levelDisplay) {
+            const total = prefs.lifetimeTotal || 0;
+            const currentLevel = getLevelInfo(total).level;
+            levelDisplay.innerText = `Level ${currentLevel}`;
+        }
+    };
+
+    const SAVABLE_MESSAGES = [
+        "It's good to see you, {Name}! The stars dimmed while you were away, so I used [SHIELD_STRING] to keep your sky lit.<br><br>Would you like to start fresh and save your shields, or keep your streak intact?",
+        "Hello again, {Name}! You drifted into the void for a moment, but [SHIELD_STRING] anchored your position.<br><br>Would you like to start fresh and save your shields, or keep your streak intact?",
+        "Welcome back, {Name}! Your progress was guarded by [SHIELD_STRING] while you were away.<br><br>Would you like to start fresh and save your shields, or keep your streak intact?",
+        "Glad you're back! Even though you took a little break, [SHIELD_STRING] kept your momentum strong.<br><br>Would you like to start fresh and save your shields, or keep your streak intact?",
+        "It's been a minute. The universe held its breath while you rested, and [SHIELD_STRING] guarded your progress.<br><br>Would you like to start fresh and save your shields, or keep your streak intact?",
+        "Happy to see you! Your inner fire flickered for a moment, but [SHIELD_STRING] kept the embers warm.<br><br>Would you like to start fresh and save your shields, or keep your streak intact?",
+        "Welcome back, {Name}. The path was waiting for you, and [SHIELD_STRING] made sure it didn't disappear.<br><br>Would you like to start fresh and save your shields, or keep your streak intact?",
+        "Great to see you again! Everyone needs a rest, so I used [SHIELD_STRING] to look after your progress.<br><br>Would you like to start fresh and save your shields, or keep your streak intact?",
+        "You’re back, {Name}! Your streak is still here thanks to [SHIELD_STRING].<br><br>Would you like to start fresh and save your shields, or keep your streak intact?",
+        "Glad you made it back! The cosmos held your place in the stars, and [SHIELD_STRING] guarded your progress.<br><br>Would you like to start fresh and save your shields, or keep your streak intact?"
+    ];
+
+    const LOST_MESSAGES = [
+        { text: "Welcome back, {Name}! I’ve been watching the stars for you. Today is the perfect day to begin a new session together. You ready?", btn: "BEGIN SESSION" },
+        { text: "It is so good to see you again! Take a deep breath, for today is a brand new day, and the path ahead is clear and bright. Shall we find our center together?", btn: "FIND OUR CENTER" },
+        { text: "You’re back! I’ve missed our sessions. It’s a beautiful day for a fresh start, and I’m so glad I get to spend it with you. Ready to get back into the flow?", btn: "GET BACK INTO THE FLOW" },
+        { text: "Welcome back! The fog has cleared and you are here. Every time we return to our practice, it's a chance to start a new story. Shall we see what this chapter holds?", btn: "START A NEW CHAPTER" },
+        { text: "I’m so glad you’re back. Like the stars above, our journey has its own rhythm, and today is a perfect moment to find our melody again. Shall we begin anew?", btn: "BEGIN ANEW" },
+        { text: "It’s wonderful to see you again! Are you ready to get back into it and forge a new path?", btn: "BEGIN SESSION" },
+        { text: "You’re back! Today is full of possibilities and I'm eager to go on this journey with you. Ready to begin another session?", btn: "BEGIN SESSION" },
+        { text: "Welcome back, {Name}! I missed you. Shall we honor your return with a brand new start today?", btn: "START SESSION" },
+        { text: "I’m so happy to see you! The universe has been waiting to rearrange in your favor. Shall we start a session?", btn: "START SESSION" },
+        { text: "A new dawn has arrived, and you’re here to see it! It is so good to be back in your presence. Ready to begin again?", btn: "BEGIN SESSION" }
+    ];
+
+    window.getSavableMessage = function(name, lunarCount, solarCount) {
+        let deck = load('ASTRAL_GREET_SAVABLE_V2') || [];
+        if (deck.length === 0) {
+            deck = [...SAVABLE_MESSAGES];
+            for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+        }
+        let msg = deck.pop(); save('ASTRAL_GREET_SAVABLE_V2', deck);
+
+        let shieldParts = [];
+        if (lunarCount > 0) shieldParts.push(`${lunarCount} Lunar Shield${lunarCount > 1 ? 's' : ''}`);
+        if (solarCount > 0) shieldParts.push(`${solarCount} Solar Shield${solarCount > 1 ? 's' : ''}`);
+        let shieldString = shieldParts.join(" and ");
+
+        return msg.replace(/\{Name\}|\[Name\]/gi, name).replace(/\[SHIELD_STRING\]/gi, shieldString);
+    };
+
+    window.getLostMessage = function(name) {
+        let deck = load('ASTRAL_GREET_LOST_V1') || [];
+        if (deck.length === 0) {
+            deck = [...LOST_MESSAGES];
+            for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+        }
+        let obj = deck.pop(); save('ASTRAL_GREET_LOST_V1', deck);
+        return { text: obj.text.replace(/\{Name\}|\[Name\]/gi, name), btn: obj.btn };
+    };
+
+    window.checkWelcomeGreeting = function() {
+        if (prefs.vacationMode) return; 
+        
+        let todayStr = getLogicalDateStr();
+        if (prefs.lastGreetDate === todayStr) return; 
+        
+        let allDates = Object.keys(historyMap).map(k => new Date(k)).filter(d => !isNaN(d));
+        if (allDates.length === 0) return; 
+        
+        let earliestHistory = new Date(Math.min(...allDates));
+        earliestHistory.setHours(0,0,0,0);
+        
+        let todayD = getLogicalDate();
+        todayD.setHours(0,0,0,0);
+        
+        let d = new Date(todayD);
+        d.setDate(d.getDate() - 1); 
+        
+        let missedDates = [];
+        let foundMet = false;
+        
+        while (d >= earliestHistory) {
+            let dStr = d.toDateString();
+            let val = historyMap[dStr];
+            let isMet = false;
+            if (val && typeof val === 'object') {
+                isMet = (val.c >= val.g) || val.s || val.v;
+            } else if (typeof val === 'number') {
+                isMet = val >= dailyGoal;
+            } else if (val === true) {
+                isMet = true;
+            }
+            
+            if (isMet) {
+                foundMet = true;
+                break; 
+            } else {
+                missedDates.push(dStr);
+            }
+            d.setDate(d.getDate() - 1);
+        }
+        
+        if (missedDates.length === 0) {
+            prefs.lastGreetDate = todayStr; 
+            save(K_PREFS, prefs);
+            return;
+        }
+        
+        prefs.lastGreetDate = todayStr;
+        save(K_PREFS, prefs);
+        
+        setTimeout(() => triggerGreetingLogic(missedDates, foundMet), 1200);
+    };
+
+    function triggerGreetingLogic(missedDates, foundMet) {
+        let neededTotal = missedDates.length;
+        let lunarToUse = 0;
+        let solarToUse = 0;
+        
+        if (prefs.skipCredits > 0) {
+            lunarToUse = 1;
+            neededTotal -= 1;
+        }
+        
+        if (prefs.solarCredits >= neededTotal) {
+            solarToUse = neededTotal;
+            neededTotal = 0;
+        }
+        
+        let canSave = foundMet && (neededTotal === 0);
+        let uName = (prefs.username && prefs.username.trim() !== "") ? prefs.username : "Stargazer";
+        
+        if (canSave) {
+            let msg = getSavableMessage(uName, lunarToUse, solarToUse);
+            
+            guideSpeak("Welcome Back", msg, "KEEP STREAK", () => {
+                prefs.skipCredits -= lunarToUse;
+                prefs.solarCredits -= solarToUse;
+                save(K_PREFS, prefs);
+                
+                const sText = document.getElementById('skips-remaining-text');
+                if (sText) sText.innerText = prefs.skipCredits;
+                const solText = document.getElementById('solar-remaining-text');
+                if (solText) solText.innerText = prefs.solarCredits;
+                
+                missedDates.forEach(dStr => {
+                    if (!historyMap[dStr]) historyMap[dStr] = { c: 0, g: dailyGoal };
+                    if (typeof historyMap[dStr] === 'number') historyMap[dStr] = { c: historyMap[dStr], g: dailyGoal };
+                    historyMap[dStr].s = true;
+                });
+                save(K_HISTORY, historyMap);
+                
+                if (typeof showSnackbar === 'function') showSnackbar('Streak protected!', null);
+                
+            }, "START FRESH", () => {
+                setTimeout(() => {
+                    guideSpeak("Moving Forward", "A fresh start can be powerful. I’ve tucked your shields away in your account for whenever you need them. Shall we begin today's journey?", "I'M READY", () => {
+                        window.startSession();
+                    }, "JUST A MOMENT", () => {});
+                }, 600);
+            });
+            
+        } else {
+            let obj = getLostMessage(uName);
+            
+            guideSpeak("Welcome Back", obj.text, obj.btn, () => {
+                window.startSession();
+            }, "NOT YET", () => {
+                setTimeout(() => {
+                    guideSpeak("No Rush", "Of course. No rush at all. Do you want to adjust your account before we begin or just take a moment to breathe?", "ADJUST ACCOUNT", () => {
+                        switchView('account-view');
+                    }, "TAKE A MOMENT", () => {});
+                }, 600);
+            });
+        }
+    }
+
+
     window.checkUnlocks = function() {
         const total = prefs.lifetimeTotal || 0;
         const currentLevelInfo = getLevelInfo(total);
@@ -1862,14 +2169,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.checkUnlocks(); 
     window.updateList();
-    window.checkOnboarding(); // <--- Triggers the welcome screen if they are new!
+    window.checkOnboarding(); 
+    window.checkWelcomeGreeting(); 
+    window.updateAccountHeader();
 
-    // --- GLOBAL WINDOW FUNCTIONS ---
     window.closeGoalOverlay = function() {
         document.getElementById('goal-overlay').classList.remove('show');
         document.body.classList.remove('screen-goal-breathe');
         
-        // Stops the bounce!
         const overlayPetImg = document.getElementById('overlay-companion-img');
         if (overlayPetImg) overlayPetImg.classList.remove('bounce-fast');
     };
@@ -1882,7 +2189,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showDialog('alert', 'Manage Collection', '• Rename or delete categories using the icons.\n\n• Reorder categories to update the main page.\n\n• Expand a category to manage individual affirmations.', '', 'GOT IT', '');
     };
 
-    // --- GENTLE COSMIC CHIME (ECHO'S VOICE) ---
     window.playCosmicChime = function() {
         if (!prefs.soundUI) return; 
 
@@ -1912,7 +2218,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { console.log("Chime failed:", e); }
     };
 
-    // --- WOOD BLOCK (THE "DOORS") ---
     window.playWoodBlock = function() {
         if (prefs.haptics && window.navigator.vibrate) {
             try { window.navigator.vibrate(25); } catch(e) {}
@@ -1934,7 +2239,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {}
     };
 
-    // --- GLASS TAP (THE "INTERACTIONS") ---
     window.playGlassTap = function() {
         if (prefs.haptics && window.navigator.vibrate) {
             try { window.navigator.vibrate(15); } catch(e) {}
@@ -1956,43 +2260,33 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {}
     };
 
-    // --- SMART HIERARCHY LISTENER ---
     document.addEventListener('click', function(e) {
-        // Find the closest interactive element
         const el = e.target.closest('button, .icon-action-btn, .custom-cb-label, .category-header, .breakdown-header, .dropdown-item, .cat-select-btn, .switch, .snack-undo, #bulk-toggle-btn, #guides-menu-name-btn, #vacation-banner, .legacy-card, .setting-row[onclick], .collection-card');
         
-        // If not clickable or it's a game bubble, do nothing
-        if (!el || el.classList.contains('bub')) return;
+        if (!el || el.classList.contains('bub') || el.classList.contains('nav-item')) return; // nav-item handled directly in router
 
-        // THE WOOD LIST: Only "Entry" links
-        // Matches the Lifetime Card and the specific Settings links we identified
         const isWoodDoor = el.matches('.legacy-card, .setting-row[onclick]');
 
         if (isWoodDoor) {
             window.playWoodBlock();
         } else {
-            // EVERYTHING ELSE: Buttons, Toggles, and "Inside" actions are Glass
             window.playGlassTap();
         }
     });
 
-    // --- REUSABLE GUIDE SPEECH BUBBLE (UPGRADED) ---
     window.guideSpeak = function(title, message, primaryBtnText = "OKAY", onPrimary = null, secondaryBtnText = null, onSecondary = null) {
         const container = document.querySelector('.pet-container');
         if (!container) return;
 
-        // Remove an existing bubble if they click rapidly
         const existing = document.getElementById('guide-dynamic-bubble');
         if (existing) existing.remove();
 
-        // Create the beautiful glass bubble dynamically
         const bubble = document.createElement('div');
         bubble.id = 'guide-dynamic-bubble';
         bubble.className = 'echo-bubble-container';
         
         let titleHtml = title ? `<div style="font-weight: bold; color: var(--correct-color); margin-bottom: 8px; font-size: 15px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px;">${title}</div>` : '';
 
-        // Dynamically build 1 or 2 buttons!
         let buttonsHtml = '';
         if (secondaryBtnText) {
             buttonsHtml = `
@@ -2014,34 +2308,27 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         container.appendChild(bubble);
 
-        // Slide it in smoothly
         setTimeout(() => bubble.classList.add('show'), 50);
         
-        // Play the gentle chime!
         if (window.playCosmicChime) window.playCosmicChime();
 
-        // Primary Button Logic
         const btnPri = bubble.querySelector('#guide-btn-pri');
         btnPri.onclick = () => {
             bubble.classList.remove('show');
             setTimeout(() => bubble.remove(), 500);
-            if (onPrimary) onPrimary(); // Trigger the action!
+            if (onPrimary) onPrimary(); 
         };
 
-        // Secondary Button Logic (if it exists)
         if (secondaryBtnText) {
             const btnSec = bubble.querySelector('#guide-btn-sec');
             btnSec.onclick = () => {
                 bubble.classList.remove('show');
                 setTimeout(() => bubble.remove(), 500);
-                if (onSecondary) onSecondary(); // Trigger the action!
+                if (onSecondary) onSecondary(); 
             };
         }
     };
 
-    // --- THE GRAND REVEAL ---
-    // window.addEventListener('load') tells the browser to wait until EVERY image is finished downloading.
-    // Once the images are ready, it triggers the smooth fade-in!
     window.addEventListener('load', () => {
         document.body.style.visibility = "visible";
         document.body.style.opacity = "1";
