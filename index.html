@@ -17,18 +17,10 @@
 
     <link rel="stylesheet" href="style.css">
 
-    <style>
-        body { 
-            opacity: 0; 
-            visibility: hidden; 
-            transition: opacity 0.6s ease-in-out, visibility 0.6s; 
-        }
-    </style>
-
     <script>
         const APP_THEMES = {
             "Astral": {
-                "--bg-image": "url('images/astral.png')",
+                "--bg-image": "url('images/themes/astral.png')",
                 "--bg-base": "#050510",
                 "--text-main": "#ffffff",
                 "--text-muted": "#aaaaaa",
@@ -52,7 +44,7 @@
                 "--shadow-color": "rgba(0, 0, 0, 0.7)"
             },
             "Cloud": {
-                "--bg-image": "url('images/cloud.png')",
+                "--bg-image": "url('images/themes/cloud.png')",
                 "--bg-base": "#e2e8f0",
                 "--text-main": "#334155",
                 "--text-muted": "#64748b",
@@ -80,15 +72,10 @@
         function applyThemeVariables(themeName) {
             if (!APP_THEMES[themeName]) return;
             const themeColors = APP_THEMES[themeName];
-            
-            // THE ULTIMATE FIX: Force paint the background instantly, bypassing CSS delays!
             document.documentElement.style.backgroundColor = themeColors['--bg-base'];
-            
             for (const [key, value] of Object.entries(themeColors)) {
                 document.documentElement.style.setProperty(key, value);
             }
-            
-            // THE STATUS BAR FIX: Updates your phone's top notch color
             const metaThemeColor = document.getElementById('meta-theme-color');
             if (metaThemeColor && themeColors['--bg-base']) {
                 metaThemeColor.setAttribute('content', themeColors['--bg-base']);
@@ -106,29 +93,12 @@
 <body>
 <div id="bg-mesh"></div>
 
-<div id="lib">
-    <div class="top-nav">
-        <div class="header-title">
-            <h1 style="margin: 0; font-size: 1.1rem; letter-spacing: 2px; font-weight: 300; line-height: 1.2;">ASTRAL<br>AFFIRMATIONS</h1>
-        </div>
+<main class="app-container">
 
-        <div class="header-icons" style="display: flex; gap: 15px; align-items: center;">
-            <button class="nav-btn" id="stats-nav-btn" onclick="openStats()">
-                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-            </button>
-            <button id="meBtn" class="nav-btn" aria-label="Me Overlay" onclick="document.getElementById('me-overlay').classList.add('show')">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-            </button>
-        </div>
-    </div>
-    
-    <div style="height: 45px;"></div>
-    
-    <div id="main-scroll-area">
-        <div id="vacation-banner" onclick="document.getElementById('me-overlay').classList.add('show')" style="cursor: pointer; user-select: none;">
+<section id="home-view" class="app-view active">
+        <h1 style="margin: 0 0 25px 0; font-size: 1.2rem; letter-spacing: 2px; font-weight: 300; color: var(--text-main); text-align: left;">ASTRAL AFFIRMATIONS</h1>
+
+        <div id="vacation-banner" onclick="switchView('account-view', event)" style="cursor: pointer; user-select: none;">
             Vacation Mode is ON—Streaks are paused.
         </div>
 
@@ -147,7 +117,7 @@
             </div>
         </div>
 
-       <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 15px; margin-top: 20px;">
+        <div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 15px; margin-top: 20px;">
             <div style="font-size: 16px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; color: var(--text-main);">Affirmations</div>
             <div style="font-size: 13px; color: var(--text-muted);">Select what you want to focus on</div>
         </div>
@@ -161,12 +131,146 @@
         </div>
 
         <div id="list"></div>
-    </div>
-    
-    <div id="footer-controls">
-        <button class="begin-session-btn" onclick="startSession()">BEGIN SESSION</button>
-    </div>
-</div> 
+        
+        <div style="height: 100px;"></div> 
+        
+        <div class="start-btn-container">
+            <button class="begin-session-btn" onclick="startSession()">BEGIN SESSION</button>
+        </div>
+    </section>
+
+    <section id="stats-view" class="app-view">
+        <div class="overlay-title" style="margin-bottom: 15px; text-align: center;">Journey</div>
+        <div id="level-container" class="level-container"></div>
+        <div class="stats-grid-top" style="margin-bottom: 10px;">
+            <div class="stat-box"><div class="stat-value" id="stat-best-streak">0</div><div class="stat-label">Best<br>Streak</div></div>
+            <div class="stat-box"><div class="stat-value" id="streak-count">0</div><div class="stat-label">Current<br>Streak</div></div>
+            <div class="stat-box"><div class="stat-value" id="stat-daily-pace">0</div><div class="stat-label">Daily<br>Frequency</div></div>
+        </div>
+
+        <h3 style="margin-top: 20px; text-transform: uppercase; font-size: 12px; color: var(--text-muted); text-align: center; letter-spacing: 1px;">Protections</h3>
+        <div style="display: flex; gap: 10px; margin-bottom: 25px;">
+            <div class="setting-row" style="flex: 1; justify-content: center; flex-direction: column; text-align: center; cursor: default; margin-bottom: 0; padding: 10px;">
+                <span style="font-size: 20px; margin-bottom: 5px;">🌙</span>
+                <span style="font-weight: bold; font-size: 16px; color: var(--text-main);" id="skips-remaining-text">3</span>
+                <span style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Saves Yesterday</span>
+            </div>
+            <div class="setting-row" style="flex: 1; justify-content: center; flex-direction: column; text-align: center; margin-bottom: 0; padding: 10px; cursor: pointer;" onclick="openSolarCalendar()">
+                <span style="font-size: 20px; margin-bottom: 5px;">☀️</span>
+                <span style="font-weight: bold; font-size: 16px; color: var(--text-main);" id="solar-remaining-text">0</span>
+                <span style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Mends Past Gap</span>
+            </div>
+        </div>
+
+        <div class="legacy-card" onclick="openBreakdown()"><div class="legacy-label">Lifetime Affirmations</div><div id="legacy-total-value" class="legacy-value">0</div><div class="legacy-chevron"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div></div>
+        <div class="chart-section" style="padding-bottom: 5px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div class="chart-title" style="margin-bottom: 0;">Total Volume</div>
+                <div class="custom-dropdown" id="chart-dropdown"><button class="view-select-btn" id="chart-view-btn" onclick="toggleDropdown(event)">Day</button><div class="dropdown-menu" id="chart-dropdown-menu"><div class="dropdown-item" onclick="selectChartView('Day')">Day</div><div class="dropdown-item" onclick="selectChartView('Week')">Week</div><div class="dropdown-item" onclick="selectChartView('Month')">Month</div><div class="dropdown-item" onclick="selectChartView('Year')">Year</div></div></div>
+            </div>
+            <div class="scroll-chart-container" id="scroll-chart-container"><div class="bar-chart" id="bar-chart"></div></div>
+        </div>
+        <div class="chart-section" style="margin-bottom: 5px;">
+            <div class="chart-title">Goal Calendar</div>
+            <div class="scroll-calendar" id="calendar-container"></div>
+        </div>
+        
+    </section>
+
+    <section id="collection-view" class="app-view">
+        <h2 class="overlay-title" style="text-align: center; margin-bottom: 25px;">The Sanctuary</h2>
+        
+        <div class="legacy-card" onclick="openGuides()" style="margin-bottom: 15px;">
+            <div style="flex: 1;">
+                <h3 style="margin: 0; font-size: 16px; color: var(--text-main);">Companions</h3>
+                <p style="margin: 4px 0 0; font-size: 12px; color: var(--text-muted);">Who is guiding your journey?</p>
+            </div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </div>
+
+        <div class="legacy-card" onclick="openThemes()" style="margin-bottom: 15px;">
+            <div style="flex: 1;">
+                <h3 style="margin: 0; font-size: 16px; color: var(--text-main);">Atmosphere</h3>
+                <p style="margin: 4px 0 0; font-size: 12px; color: var(--text-muted);">Change your surroundings.</p>
+            </div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </div>
+
+    </section>
+
+    <section id="account-view" class="app-view">
+        <div class="overlay-title" style="margin-bottom: 15px; text-align: center;">Account</div>
+        
+        <div style="background: var(--header-glass); border: 1px solid var(--border-glass); border-radius: 16px; padding: 15px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; line-height: 1; transform: translateY(1px);">Name:</span>
+                <span id="account-username-display" style="font-size: 16px; font-weight: bold; color: var(--correct-color); letter-spacing: 1px; line-height: 1;">Stargazer</span>
+                <span class="icon-action-btn edit" onclick="editUsername()" style="margin: 0; padding: 0 0 0 4px; color: var(--text-muted); display: flex; align-items: center;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                </span>
+            </div>
+            <div id="account-level-display" style="font-size: 12px; font-weight: bold; color: var(--text-main); text-transform: uppercase; letter-spacing: 2px;">Level 1</div>
+        </div>
+
+        <div class="setting-subheading">Affirmations</div>
+
+        <div class="setting-row" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;" onclick="openManager();">
+            <span>Manage Affirmations</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); opacity: 0.8;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </div>
+
+        <div class="setting-subheading" style="margin-top: 25px;">Appearance</div>
+        <div class="setting-row"><span>Background Image</span><label class="switch"><input type="checkbox" id="bg-toggle" onchange="toggleBackground()"><span class="slider"></span></label></div>
+
+        <div class="setting-subheading" style="margin-top: 25px;">Sound & Haptics</div>
+        <div class="setting-row"><span>Interface Sounds</span><label class="switch"><input type="checkbox" id="sound-ui-toggle" onchange="toggleUISound()"><span class="slider"></span></label></div>
+        <div class="setting-row"><span>Daily Practice Sounds</span><label class="switch"><input type="checkbox" id="sound-game-toggle" onchange="toggleGameSound()"><span class="slider"></span></label></div>
+        <div class="setting-row"><span>Haptic Feedback</span><label class="switch"><input type="checkbox" id="haptics-toggle" onchange="toggleHaptics()"><span class="slider"></span></label></div>
+
+        <div class="setting-subheading" style="margin-top: 25px;">Presence</div>
+
+        <div class="setting-row"><span>Night Owl</span><label class="switch"><input type="checkbox" id="nightowl-toggle" onchange="toggleNightOwl()"><span class="slider"></span></label></div>
+        <div class="setting-desc">The day resets at 4 AM, preventing streak loss for late-night activity.</div>
+
+        <div class="setting-row"><span>Vacation Mode</span><label class="switch"><input type="checkbox" id="vacation-toggle" onchange="toggleVacation()"><span class="slider"></span></label></div>
+        <div class="setting-desc">Automatically pauses streak tracking without using shield credits. Affirmations remain available for daily practice.</div>
+
+        <div class="setting-row" style="margin-bottom: 0;"><span>Zen Mode</span><label class="switch"><input type="checkbox" id="zen-toggle" onchange="toggleZenMode()"><span class="slider"></span></label></div>
+        <div class="setting-desc">Hides counts and streaks for a minimal experience. Data is still saved in the background.</div>
+
+        <div class="setting-subheading" style="margin-top: 25px;">Data Management</div>
+        <div class="setting-row" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="openExport()">
+            <span>Export Data</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); opacity: 0.8;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </div>
+        
+        <div class="setting-row" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="openImport()">
+            <span>Import Data</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); opacity: 0.8;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </div>
+        
+        <div class="setting-row" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0;" onclick="resetAll()">
+            <span style="color: var(--wrong-color);">Reset All Data</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); opacity: 0.8;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </div>
+
+    </section>
+
+</main> 
+<nav id="bottom-nav" class="floating-nav">
+    <button class="nav-item active" id="nav-home" onclick="switchView('home-view', event)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+    </button>
+    <button class="nav-item" id="nav-stats" onclick="switchView('stats-view', event)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+    </button>
+    <button class="nav-item" id="nav-collection" onclick="switchView('collection-view', event)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+    </button>
+    <button class="nav-item" id="nav-account" onclick="switchView('account-view', event)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+    </button>
+</nav>
 
 <div id="game">
     <div id="game-progress-container"><div id="game-progress-fill"></div></div>
@@ -220,65 +324,6 @@
 
     <div id="display-area"><div id="text-out"></div></div>
     <div id="grid-area"><div id="grid"></div></div>
-</div>
-
-<div id="settings-overlay" class="glass-overlay">
-    <button class="back-icon-btn" onclick="document.getElementById('settings-overlay').classList.remove('show'); document.getElementById('me-overlay').classList.add('show');"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
-    
-    <div class="overlay-card" style="text-align: left;">
-        <div class="overlay-title" style="text-align: center;">Settings</div>
-
-        <div class="setting-subheading">Appearance</div>
-        <div class="setting-row"><span>Background Image</span><label class="switch"><input type="checkbox" id="bg-toggle" onchange="toggleBackground()"><span class="slider"></span></label></div>
-
-        <div class="setting-subheading">Sound & Haptics</div>
-                <div class="setting-row"><span>Interface Sounds</span><label class="switch"><input type="checkbox" id="sound-ui-toggle" onchange="toggleUISound()"><span class="slider"></span></label></div>
-        <div class="setting-row"><span>Daily Practice Sounds</span><label class="switch"><input type="checkbox" id="sound-game-toggle" onchange="toggleGameSound()"><span class="slider"></span></label></div>
-        <div class="setting-row"><span>Haptic Feedback</span><label class="switch"><input type="checkbox" id="haptics-toggle" onchange="toggleHaptics()"><span class="slider"></span></label></div>
-
-
-        <div class="setting-subheading">Data Management</div>
-        <div class="setting-row" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="openExport()">
-            <span>Export Data</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); opacity: 0.8;"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </div>
-        
-        <div class="setting-row" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="openImport()">
-            <span>Import Data</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); opacity: 0.8;"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </div>
-        
-        <div class="setting-row" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0;" onclick="resetAll()">
-            <span style="color: var(--wrong-color);">Reset All Data</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); opacity: 0.8;"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </div>
-        
-    </div>
-</div>
-
-<div id="stats-overlay" class="glass-overlay">
-    <button class="back-icon-btn" onclick="closeOverlays()"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
-    <div class="overlay-card" style="padding: 20px;">
-        <div class="overlay-title" style="margin-bottom: 15px;">Journey</div>
-        <div id="level-container" class="level-container"></div>
-        <div class="stats-grid-top">
-            <div class="stat-box"><div class="stat-value" id="stat-best-streak">0</div><div class="stat-label">Best<br>Streak</div></div>
-            <div class="stat-box"><div class="stat-value" id="streak-count">0</div><div class="stat-label">Current<br>Streak</div></div>
-            <div class="stat-box"><div class="stat-value" id="stat-daily-pace">0</div><div class="stat-label">Daily<br>Frequency</div></div>
-        </div>
-        <div class="legacy-card" onclick="openBreakdown()"><div class="legacy-label">Lifetime Affirmations</div><div id="legacy-total-value" class="legacy-value">0</div><div class="legacy-chevron"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></div></div>
-        <div class="chart-section" style="padding-bottom: 5px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <div class="chart-title" style="margin-bottom: 0;">Total Volume</div>
-                <div class="custom-dropdown" id="chart-dropdown"><button class="view-select-btn" id="chart-view-btn" onclick="toggleDropdown(event)">Day</button><div class="dropdown-menu" id="chart-dropdown-menu"><div class="dropdown-item" onclick="selectChartView('Day')">Day</div><div class="dropdown-item" onclick="selectChartView('Week')">Week</div><div class="dropdown-item" onclick="selectChartView('Month')">Month</div><div class="dropdown-item" onclick="selectChartView('Year')">Year</div></div></div>
-            </div>
-            <div class="scroll-chart-container" id="scroll-chart-container"><div class="bar-chart" id="bar-chart"></div></div>
-        </div>
-        <div class="chart-section" style="margin-bottom: 5px;">
-            <div class="chart-title">Goal Calendar</div>
-            <div class="scroll-calendar" id="calendar-container"></div>
-        </div>
-    </div>
 </div>
 
 <div id="breakdown-overlay" class="glass-overlay">
@@ -367,7 +412,7 @@
 
 <div id="data-overlay" class="glass-overlay">
     <div class="overlay-card" style="padding: 25px 20px; max-width: 340px;">
-        <button class="back-icon-btn" onclick="document.getElementById('data-overlay').classList.remove('show'); openSettings();"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+        <button class="back-icon-btn" onclick="document.getElementById('data-overlay').classList.remove('show');"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
         
         <div class="overlay-title" id="data-title" style="margin-bottom: 10px;">Export Data</div>
         <div class="setting-desc" id="data-desc" style="text-align: center; margin-bottom: 15px;">Copy this code or save it as a file.</div>
@@ -400,68 +445,6 @@
     <div class="snack-undo" onclick="triggerUndo()">Undo</div>
 </div>
 
-<div id="me-overlay" class="glass-overlay" style="z-index: 9999;">
-    <div class="overlay-card" id="me-scroll-area" style="max-height: 85vh; overflow-y: auto;">
-        
-        <button class="back-icon-btn" id="closeMeBtn">
-            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-        </button>
-
-        <button class="back-icon-btn" style="left: auto; right: 20px;" onclick="closeOverlays(); openSettings();">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-        </button>
-        
-        <div class="overlay-title">ACCOUNT</div>
-        
-        <div class="setting-subheading" style="margin-top: 10px;">Affirmations</div>
-
-        <div class="setting-row" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;" onclick="closeOverlays(); openManager();">
-            <span>Manage Affirmations</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); opacity: 0.8;"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </div>
-
-        <div class="setting-row" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="closeOverlays(); editGoal();">
-            <span>Daily Goal</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); opacity: 0.8;"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </div>
-
-        <div class="setting-subheading" style="margin-top: 25px;">Collection</div>
-        
-        <div class="setting-row" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;" onclick="closeOverlays(); openGuides();">
-            <span>Guides</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); opacity: 0.8;"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </div>
-
-        <div class="setting-row" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;" onclick="closeOverlays(); openThemes();">
-            <span>Themes</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); opacity: 0.8;"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </div>
-
-        <div class="setting-subheading">Habit Tracking</div>
-
-        <div class="setting-row"><span>Night Owl</span><label class="switch"><input type="checkbox" id="nightowl-toggle" onchange="toggleNightOwl()"><span class="slider"></span></label></div>
-        <div class="setting-desc">The day resets at 4 AM, preventing streak loss for late-night activity.</div>
-
-        <div id="habit-tracking-group" class="habit-tracking-group">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; margin-bottom: 15px;">
-                <div style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
-                    <span style="font-size: 15px; font-weight: bold;">Missed Yesterday?</span>
-                    <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">Shields Remaining: <strong style="color: var(--text-main);" id="skips-remaining-text">3</strong></span>
-                </div>
-                <button class="btn-skip" style="margin: 0;" onclick="applySkip()">USE SHIELD</button>
-            </div>
-            <div class="setting-desc" style="margin-top: -5px;">Silver shields protect active streaks from missed days. Three are available per month.</div>
-        </div>
-
-        <div class="setting-row"><span>Vacation Mode</span><label class="switch"><input type="checkbox" id="vacation-toggle" onchange="toggleVacation()"><span class="slider"></span></label></div>
-        <div class="setting-desc">Automatically pauses streak tracking without using shield credits. Affirmations remain available for daily practice.</div>
-
-        <div class="setting-row"><span>Zen Mode</span><label class="switch"><input type="checkbox" id="zen-toggle" onchange="toggleZenMode()"><span class="slider"></span></label></div>
-        <div class="setting-desc" style="margin-bottom: 0;">Hides counts and streaks for a minimal experience. Data is still saved in the background.</div>
-
-    </div>
-</div>
-
 <div id="guides-overlay" class="glass-overlay" style="z-index: 9999;">
     <div class="overlay-card" style="max-height: 85vh; overflow-y: auto;">
         <button class="back-icon-btn" onclick="closeGuides()"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
@@ -480,13 +463,13 @@
 
         <div class="collection-grid">
             <div class="collection-card unlocked guide-card" data-guide-name="Echo" onclick="equipGuide('Echo', this)">
-                <img src="images/star.png" class="collection-img" alt="Guide">
+                <img src="images/guides/echo.png" class="collection-img" alt="Guide">
                 <div class="collection-name">Echo</div>
             </div>
 
             <div class="collection-card locked unlockable-item guide-card" data-guide-name="Cumulus" data-unlock-level="5" onclick="equipGuide('Cumulus', this)">
                 <div class="locked-glass"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><div class="unlock-req">Level 5</div></div>
-                <img src="images/cumulus.png" class="collection-img silhouette" alt="Locked Guide">
+                <img src="images/guides/cumulus.png" class="collection-img silhouette" alt="Locked Guide">
                 <div class="collection-name">Cumulus</div>
             </div>
         </div>
@@ -516,6 +499,19 @@
                 <div class="collection-name">Crystalline Cave</div>
             </div>
         </div>
+    </div>
+</div>
+
+<div id="solar-calendar-overlay" class="glass-overlay" style="z-index: 10000;">
+    <button class="back-icon-btn" onclick="closeSolarCalendar()">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+    
+    <div class="overlay-card" style="padding: 25px 20px; max-width: 360px;">
+        <div class="overlay-title" style="margin-bottom: 5px; color: #e5b25d;">Solar Shield</div>
+        <div class="setting-desc" style="text-align: center; margin-bottom: 25px;">Select a date to mend your path.</div>
+        
+        <div class="scroll-calendar" id="solar-calendar-container" style="margin-bottom: 5px;"></div>
     </div>
 </div>
 
