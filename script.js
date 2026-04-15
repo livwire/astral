@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastMovedCat = null;
 
     // ==========================================
-    // --- THE NEW VIEW ROUTER ---
+    // --- THE GUTTED, LIGHTNING-FAST VIEW ROUTER ---
     // ==========================================
     window.switchView = function(viewId, event) {
         if (event) {
@@ -57,29 +57,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (window.playGlassTap) window.playGlassTap();
         }
 
-        // 1. DO THE HEAVY LIFTING FIRST (Update DOM while the view is still hidden)
-        if (viewId === 'home-view') {
-            window.updateList();
-            document.getElementById('bulk-area').style.display = 'none';
-            document.getElementById('bulk-toggle-btn').style.display = 'block';
-            document.getElementById('bulk-in').value = '';
-        } else if (viewId === 'stats-view') {
-            renderStats();
-        } else if (viewId === 'collection-view') {    
-            updateManagerList();
-        } else if (viewId === 'account-view') {
-            window.updateAccountHeader();
-        }
-
-        // 2. NOW SWAP THE VIEWS (Instant snap with the new content fully loaded)
+        // 1. Instantly hide all views, show the target view
         document.querySelectorAll('.app-view').forEach(view => {
+            view.style.display = 'none'; // Gutting CSS classes, forcing a hard toggle
             view.classList.remove('active');
         });
 
         const targetView = document.getElementById(viewId);
-        if (targetView) targetView.classList.add('active');
+        if (targetView) {
+            targetView.style.display = 'block'; 
+            targetView.classList.add('active');
+        }
 
-        // 3. UPDATE NAV HIGHLIGHTS
+        // 2. Update Nav Highlights
         document.querySelectorAll('.nav-item').forEach(nav => {
             nav.classList.remove('active');
         });
@@ -94,6 +84,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (navMap[viewId]) {
             const activeNav = document.getElementById(navMap[viewId]);
             if (activeNav) activeNav.classList.add('active');
+        }
+
+        // 3. ONLY run DOM rebuilds if absolutely necessary for that specific view
+        if (viewId === 'home-view') {
+            document.getElementById('bulk-area').style.display = 'none';
+            document.getElementById('bulk-toggle-btn').style.display = 'block';
+        } else if (viewId === 'stats-view') {
+            // Stats actually need to be redrawn to calculate daily changes
+            renderStats(); 
+        } else if (viewId === 'account-view') {
+            window.updateAccountHeader();
         }
 
         window.closeOverlays();
