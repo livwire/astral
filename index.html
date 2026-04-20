@@ -185,22 +185,39 @@
     <section id="collection-view" class="app-view">
         <div class="overlay-title" style="margin-bottom: 15px; text-align: center;">Sanctuary</div>
         
-        <div class="legacy-card" onclick="openGuides()" style="margin-bottom: 15px;">
-            <div style="flex: 1;">
-                <h3 style="margin: 0; font-size: 16px; color: var(--text-main);">Companions</h3>
-                <p style="margin: 4px 0 0; font-size: 12px; color: var(--text-muted);">Who is guiding your journey?</p>
+        <div class="feature-card">
+            <div class="feature-card-image">
+                <img id="sanctuary-guide-img" src="images/guides/echo.png" alt="Guide">
             </div>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            <div class="feature-card-content">
+                <h3>Companions</h3>
+                <p>Who is guiding your journey?</p>
+                <div class="feature-btn-row">
+                    <button class="btn-outline" onclick="openGuides()">SELECT</button>
+                    <button class="btn-main" onclick="showDialog('alert', 'Coming Soon', 'Talk to Guide AI integration is under construction.', '', 'OK')">TALK</button>
+                </div>
+            </div>
         </div>
 
-        <div class="legacy-card" onclick="openThemes()" style="margin-bottom: 15px;">
-            <div style="flex: 1;">
-                <h3 style="margin: 0; font-size: 16px; color: var(--text-main);">Atmosphere</h3>
-                <p style="margin: 4px 0 0; font-size: 12px; color: var(--text-muted);">Change your surroundings.</p>
+        <div class="feature-card">
+            <div class="feature-card-content">
+                <h3>Atmosphere</h3>
+                <p>Change your surroundings.</p>
+                <div class="feature-btn-row">
+                    <button class="btn-outline" onclick="openThemes()">CHANGE</button>
+                    <button class="btn-main" onclick="showDialog('alert', 'Coming Soon', 'The expanded Atmosphere shop is under construction.', '', 'OK')">GET MORE</button>
+                </div>
             </div>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            
+            <div class="feature-card-image" style="height: 100px; width: 70px; background: transparent; border: none; overflow: visible;">
+                <div class="theme-preview" id="sanctuary-theme-mockup" style="margin: 0; width: 100%; height: 100%;">
+                    <div style="display:flex; flex-direction:column; gap:4px; align-items:center; margin-top: 50%;">
+                         <div style="width:20px; height:4px; background:rgba(255,255,255,0.5); border-radius:2px;"></div>
+                         <div style="width:30px; height:4px; background:var(--correct-color); border-radius:2px;"></div>
+                    </div>
+                </div>
+            </div>
         </div>
-
     </section>
 
     <section id="account-view" class="app-view">
@@ -285,7 +302,6 @@
 
 <div id="game">
     <div id="game-progress-container"><div id="game-progress-fill"></div></div>
-    <button class="back-icon-btn" onclick="stopSession()"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
     <button class="skip-phrase-btn" onclick="skipCurrentPhrase()">SKIP</button>
     
     <div id="goal-overlay" class="glass-overlay">
@@ -338,9 +354,7 @@
 </div>
 
 <div id="breakdown-overlay" class="glass-overlay">
-    <button class="back-icon-btn" onclick="closeBreakdown()">
-        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-    </button>
+
     <div class="overlay-card" style="padding: 20px; text-align: left;">
         <div class="overlay-title" style="text-align: center; margin-bottom: 15px;">Affirmation Log</div>
         
@@ -356,7 +370,6 @@
 </div>
 
 <div id="manage-overlay" class="glass-overlay">
-    <button class="back-icon-btn" onclick="closeManager()"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
     <div class="overlay-card" id="manage-card">
         
         <div style="text-align: center; margin-bottom: 15px;">
@@ -423,7 +436,6 @@
 
 <div id="data-overlay" class="glass-overlay">
     <div class="overlay-card" style="padding: 25px 20px; max-width: 340px;">
-        <button class="back-icon-btn" onclick="document.getElementById('data-overlay').classList.remove('show');"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
         
         <div class="overlay-title" id="data-title" style="margin-bottom: 10px;">Export Data</div>
         <div class="setting-desc" id="data-desc" style="text-align: center; margin-bottom: 15px;">Copy this code or save it as a file.</div>
@@ -439,7 +451,6 @@
 
 <div id="custom-dialog-overlay" class="glass-overlay" style="z-index: 10005;">
     <div class="overlay-card" style="max-width: 320px; padding: 25px 20px;">
-        <button class="back-icon-btn" onclick="document.getElementById('cd-btn-cancel').click();"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
         
         <div class="overlay-title" id="cd-title" style="margin-bottom: 15px;">Title</div>
         <div id="cd-message" style="margin-bottom: 20px; font-size: 14px; line-height: 1.5; color: var(--text-muted); display: none; white-space: pre-wrap;"></div>
@@ -458,7 +469,6 @@
 
 <div id="guides-overlay" class="glass-overlay" style="z-index: 9999;">
     <div class="overlay-card" style="max-height: 85vh; overflow-y: auto;">
-        <button class="back-icon-btn" onclick="closeGuides()"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
         
         <div class="overlay-title" style="margin-bottom: 15px;">GUIDES</div>
         
@@ -489,7 +499,6 @@
 
 <div id="themes-overlay" class="glass-overlay" style="z-index: 9999;">
     <div class="overlay-card" style="max-height: 85vh; overflow-y: auto;">
-        <button class="back-icon-btn" onclick="closeThemes()"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
         
         <div class="overlay-title" style="margin-bottom: 10px;">THEMES</div>
 
@@ -514,9 +523,6 @@
 </div>
 
 <div id="solar-calendar-overlay" class="glass-overlay" style="z-index: 10000;">
-    <button class="back-icon-btn" onclick="closeSolarCalendar()">
-        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-    </button>
     
     <div class="overlay-card" style="padding: 25px 20px; max-width: 360px;">
         <div class="overlay-title" style="margin-bottom: 5px; color: #e5b25d;">Solar Shield</div>
@@ -525,6 +531,12 @@
         <div class="scroll-calendar" id="solar-calendar-container" style="margin-bottom: 5px;"></div>
     </div>
 </div>
+
+<button id="universal-back" onclick="goBackFromFocus()">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+</button>
 
 <script src="script.js"></script>
 </body>
