@@ -48,6 +48,93 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentCatSelection = null;
     let lastMovedCat = null;
 
+    /* --- PHASE 1: FOCUS MODE LOGIC --- */
+    window.lastMainView = 'home-view';
+
+    function toggleFocusMode(isFocus) {
+    const nav = document.getElementById('bottom-nav');
+    const backBtn = document.getElementById('universal-back');
+    
+    if (isFocus) {
+        // Slide nav away, pop back button up
+        if (nav) nav.classList.add('hidden');
+        if (backBtn) backBtn.classList.add('show');
+    } else {
+        // Slide nav back up, hide back button
+        if (nav) nav.classList.remove('hidden');
+        if (backBtn) backBtn.classList.remove('show');
+    }
+}
+
+    // --- THE SMART UNIVERSAL BACK BUTTON ---
+function goBackFromFocus() {
+    
+    // 1. Is a Custom Dialog open? (Edit Name, Daily Goal, etc.)
+    const customDialog = document.getElementById('custom-dialog-overlay');
+    if (customDialog && customDialog.classList.contains('show')) {
+        // Just click the hidden cancel button to safely close it!
+        const cancelBtn = document.getElementById('cd-btn-cancel');
+        if (cancelBtn) cancelBtn.click();
+        
+        // If there's no other overlay open underneath it, bring the nav bar back
+        if (!document.querySelector('.glass-overlay.show:not(#custom-dialog-overlay)')) {
+            toggleFocusMode(false);
+        }
+        return; 
+    }
+
+    // 2. Is the Game/Session running?
+    const gameScreen = document.getElementById('game');
+    if (gameScreen && gameScreen.classList.contains('active')) {
+        if (typeof goHome === 'function') goHome(); // Use your native end-session logic
+        toggleFocusMode(false);
+        return;
+    }
+
+    // 3. Are we in the Guides (Companions) Overlay?
+    const guides = document.getElementById('guides-overlay');
+    if (guides && guides.classList.contains('show')) {
+        guides.classList.remove('show');
+        toggleFocusMode(false);
+        return;
+    }
+
+    // 4. Are we in the Themes (Atmosphere) Overlay?
+    const themes = document.getElementById('themes-overlay');
+    if (themes && themes.classList.contains('show')) {
+        themes.classList.remove('show');
+        toggleFocusMode(false);
+        return;
+    }
+
+    // 5. Are we in Manage Affirmations?
+    const manage = document.getElementById('manage-overlay');
+    if (manage && manage.classList.contains('show')) {
+        manage.classList.remove('show');
+        toggleFocusMode(false);
+        return;
+    }
+
+    // 6. Are we in the Affirmation Log (Breakdown)?
+    const breakdown = document.getElementById('breakdown-overlay');
+    if (breakdown && breakdown.classList.contains('show')) {
+        breakdown.classList.remove('show');
+        toggleFocusMode(false);
+        return;
+    }
+
+    // 7. Are we in Export/Import Data?
+    const dataO = document.getElementById('data-overlay');
+    if (dataO && dataO.classList.contains('show')) {
+        dataO.classList.remove('show');
+        toggleFocusMode(false);
+        return;
+    }
+
+    // Catch-all failsafe: just show the nav bar!
+    toggleFocusMode(false);
+}
+
     // ==========================================
     // --- THE GUTTED, LIGHTNING-FAST VIEW ROUTER ---
     // ==========================================
@@ -57,9 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (window.playGlassTap) window.playGlassTap();
         }
 
-        // 1. Instantly hide all views, show the target view
         document.querySelectorAll('.app-view').forEach(view => {
-            view.style.display = 'none'; // Gutting CSS classes, forcing a hard toggle
+            view.style.display = 'none'; 
             view.classList.remove('active');
         });
 
@@ -69,32 +155,35 @@ document.addEventListener('DOMContentLoaded', () => {
             targetView.classList.add('active');
         }
 
-        // 2. Update Nav Highlights
         document.querySelectorAll('.nav-item').forEach(nav => {
             nav.classList.remove('active');
         });
         
+        // PHASE 2: Replaced collection-view with sanctuary-view
         const navMap = {
             'home-view': 'nav-home',
             'stats-view': 'nav-stats',
-            'collection-view': 'nav-collection',
+            'sanctuary-view': 'nav-sanctuary',
             'account-view': 'nav-account'
         };
         
         if (navMap[viewId]) {
             const activeNav = document.getElementById(navMap[viewId]);
             if (activeNav) activeNav.classList.add('active');
+            
+            window.lastMainView = viewId;
+            toggleFocusMode(false);
         }
 
-        // 3. ONLY run DOM rebuilds if absolutely necessary for that specific view
         if (viewId === 'home-view') {
             document.getElementById('bulk-area').style.display = 'none';
             document.getElementById('bulk-toggle-btn').style.display = 'block';
         } else if (viewId === 'stats-view') {
-            // Stats actually need to be redrawn to calculate daily changes
             renderStats(); 
         } else if (viewId === 'account-view') {
             window.updateAccountHeader();
+        } else if (viewId === 'sanctuary-view') {
+            if (typeof window.checkUnlocks === 'function') window.checkUnlocks();
         }
 
         window.closeOverlays();
@@ -167,6 +256,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             overlay.style.setProperty('z-index', '999999', 'important');
+            
+            // PART 2 FIX: Tell the Universal Back Button to slide up!
+            toggleFocusMode(true); 
+            
             overlay.classList.add('show');
             
             if (type === 'prompt') { setTimeout(() => activeInput.focus(), 100); }
@@ -174,6 +267,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const cleanup = () => { 
                 overlay.classList.remove('show'); 
                 activeInput.onkeydown = null; 
+                
+                // PART 3 FIX: Check if we need to bring the main nav back down!
+                // (Only bring it back if there isn't another overlay like 'Guides' open underneath)
+                if (!document.querySelector('.glass-overlay.show')) {
+                    toggleFocusMode(false);
+                }
             };
 
             btnCancel.onclick = () => { 
@@ -789,6 +888,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         
         document.getElementById('data-overlay').classList.add('show');
+        toggleFocusMode(true);
     }
 
     window.openImport = function() {
@@ -809,6 +909,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn2.onclick = () => processImport(ta.value);
         
         document.getElementById('data-overlay').classList.add('show');
+        toggleFocusMode(true);
     }
 
     document.getElementById('file-import-input').addEventListener('change', function(e) {
@@ -894,47 +995,55 @@ document.addEventListener('DOMContentLoaded', () => {
     // Centralized overlay closer (does not affect Views!)
     window.closeOverlays = () => { document.querySelectorAll('.glass-overlay').forEach(el => el.classList.remove('show')); };
     
-    // FIX 2: Restoring the missing Manager open/close functions
-    window.openManager = () => { 
-        updateManagerList(); 
-        document.getElementById('manage-overlay').classList.add('show'); 
-    };
-    window.closeManager = () => { 
-        document.getElementById('manage-overlay').classList.remove('show'); 
+    window.openManager = function() {
+        updateManagerList();
+        document.getElementById('manage-overlay').classList.add('show');
+        toggleFocusMode(true);
     };
 
-    window.openBreakdown = () => { 
-        renderBreakdown(); 
-        document.getElementById('breakdown-overlay').classList.add('show'); 
+    // --- THE UNIVERSAL CLOSER ---
+    window.closeManager = () => { window.goBackFromFocus(); };
+    window.closeBreakdown = () => { window.goBackFromFocus(); };
+    window.closeGuides = () => { window.goBackFromFocus(); };
+    window.closeThemes = () => { window.goBackFromFocus(); };
+
+    window.openBreakdown = function() {
+        renderBreakdown();
+        document.getElementById('breakdown-overlay').classList.add('show');
+        toggleFocusMode(true);
         
         const btnText = document.querySelector('#toggle-all-breakdown-btn span');
         const btnIcon = document.getElementById('expand-all-icon');
         if (btnText) btnText.innerText = 'EXPAND ALL';
         if (btnIcon) btnIcon.innerHTML = '<polyline points="6 9 12 15 18 9"></polyline>';
     };
-    window.closeBreakdown = () => { document.getElementById('breakdown-overlay').classList.remove('show'); };
-    
-    // Guides & Themes remain inside the Account View as popups
-    window.openGuides = () => { 
-        document.querySelectorAll('.guide-card').forEach(c => c.classList.remove('active-selection'));
+
+    // Phase 2: Guides & Themes now open from the Sanctuary View!
+    window.openGuides = function() {
+        document.getElementById('guides-overlay').classList.add('show');
+        toggleFocusMode(true);
+
         const currentUrl = prefs.activeGuideUrl || '';
         document.querySelectorAll('.guide-card.unlocked').forEach(card => {
             const img = card.querySelector('img');
             if (img && img.src === currentUrl) card.classList.add('active-selection');
         });
-        document.getElementById('guides-overlay').classList.add('show'); 
     };
-    window.closeGuides = () => { document.getElementById('guides-overlay').classList.remove('show'); };
     
-    window.openThemes = () => { 
-        document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active-selection'));
+    window.openThemes = function() {
+        document.getElementById('themes-overlay').classList.add('show');
+        toggleFocusMode(true);
+
         const currentTheme = prefs.activeTheme || 'Astral';
         document.querySelectorAll('.theme-card.unlocked').forEach(card => {
             if (card.getAttribute('data-theme-name') === currentTheme) card.classList.add('active-selection');
         });
-        document.getElementById('themes-overlay').classList.add('show'); 
     };
-    window.closeThemes = () => { document.getElementById('themes-overlay').classList.remove('show'); };
+
+    // Phase 2: Just in case you want to use the shop button!
+    window.openShop = function() {
+        showDialog('alert', 'The Silent Gallery', 'The gallery is currently closed for cosmic renovations. Check back soon!', '', 'GOT IT', '');
+    };
 
     function renderBreakdown() {
         let currentD = getLogicalDate(); currentD.setHours(0,0,0,0);
@@ -1478,9 +1587,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.body.classList.add('game-active');
         
-        // *** NEW FIX: Hide the navigation bar during gameplay ***
-        const navBar = document.querySelector('.bottom-nav') || document.querySelector('nav') || document.querySelector('.floating-nav');
-        if (navBar) navBar.style.display = 'none';
+        // Activate Focus Mode (slide nav away) but keep the Back Button hidden for gameplay
+        toggleFocusMode(true, true);
         
         if (activeState && activePhrases.find(p => p.id === activeState.phraseId)) { 
             activeState.charIdx = 0; 
@@ -1502,9 +1610,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.body.classList.remove('game-active'); 
         
-        // *** NEW FIX: Bring the navigation bar back when gameplay ends ***
-        const navBar = document.querySelector('.bottom-nav') || document.querySelector('nav') || document.querySelector('.floating-nav');
-        if (navBar) navBar.style.display = 'flex';
+        // Restore normal navigation mode
+        toggleFocusMode(false);
         
         document.getElementById('goal-overlay').classList.remove('show'); 
         document.getElementById('level-up-overlay').classList.remove('active'); 
