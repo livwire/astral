@@ -354,8 +354,11 @@ input:checked+.slider:before { transform: translateX(20px); background-color: #f
     width: 100%;
     display: flex;
     justify-content: center;
-    padding: 10px 20px calc(85px + env(safe-area-inset-bottom)) 20px; 
+    /* Bumped to 115px to guarantee it clears the floating nav! */
+    padding: 10px 20px calc(115px + env(safe-area-inset-bottom)) 20px; 
     background: transparent; 
+    position: relative;
+    z-index: 10;
 }
 
 .begin-session-btn {
@@ -707,4 +710,154 @@ body.light-mode .collection-card.active-selection { box-shadow: 0 0 15px rgba(59
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
     min-height: 100vh;
+}
+
+/* --- NAV HIDE LOGIC --- */
+.floating-nav {
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.floating-nav.hidden {
+    transform: translateY(150%);
+    pointer-events: none;
+}
+
+/* --- THE UNIVERSAL BACK BUTTON --- */
+#universal-back {
+    position: fixed;
+    bottom: 30px;
+    left: 20px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--bg-base); 
+    border: 1px solid var(--border-glass);
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+    
+    /* Starts pushed down off-screen and invisible */
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(80px); 
+    
+    /* The butter-smooth pop-up animation */
+    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* When active, it smoothly slides to its resting spot */
+#universal-back.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+/* --- THE NAVIGATION BAR GLIDE --- */
+#bottom-nav {
+    /* Ensure your nav also has a smooth transition! */
+    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* When hidden, it glides down entirely out of view */
+#bottom-nav.hidden {
+    transform: translateY(150%);
+    pointer-events: none;
+}
+
+/* --- PHASE 1: FULL SCREEN SUB-VIEWS --- */
+#manage-overlay, #breakdown-overlay, #guides-overlay, #themes-overlay, #data-overlay {
+    padding: max(20px, env(safe-area-inset-top)) 20px 20px 20px;
+    justify-content: flex-start; 
+    background: var(--overlay-bg); 
+}
+
+#manage-overlay .overlay-card, 
+#breakdown-overlay .overlay-card, 
+#guides-overlay .overlay-card, 
+#themes-overlay .overlay-card, 
+#data-overlay .overlay-card {
+    max-width: 100%;
+    height: 100%;
+    max-height: 100% !important;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    margin-bottom: 0 !important;
+    border-radius: 0;
+}
+
+/* --- PHASE 2: SANCTUARY FEATURE CARDS --- */
+.feature-card {
+    background: var(--header-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: 16px;
+    padding: 15px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.feature-card-image {
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    background: var(--card-glass);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 1px solid var(--border-glass);
+}
+
+.feature-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.feature-card-content {
+    flex: 1;
+}
+
+.feature-card-content h3 {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    color: var(--text-main);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.feature-card-content p {
+    margin: 0 0 10px 0;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.3;
+}
+
+.feature-btn-row {
+    display: flex;
+    gap: 8px;
+}
+
+.feature-btn-row button {
+    flex: 1;
+    padding: 8px 0;
+    font-size: 10px;
+    margin: 0;
+    letter-spacing: 1px;
+}
+
+.sanc-theme-preview {
+    width: 100%;
+    height: 100%;
+    background-image: var(--bg-image);
+    background-size: cover;
+    background-position: center;
 }
